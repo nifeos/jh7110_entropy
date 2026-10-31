@@ -117,13 +117,14 @@ The crate needs no `NOTICE` file and no third-party licence text.
 
 ## Identifiers that match a source name
 
-Names are the maintainers' call, so none is changed here. Most constant names are the manual's own
-register and field names (`CTRL`, `ISTAT`, `RAND_RDY`, `GLBL_EN` and the rest). Four are not:
-
-- `CTRL_EXEC_NOP`, `CTRL_GENE_RANDNUM` and `CTRL_EXEC_RANDRESEED`: Linux's `#define` names without
-  their `STARFIVE_` prefix. The manual describes the four command values in words and names none
-  of them.
-- `STAT_RAND_SEEDING`: Linux's name. The manual calls bit 31 `RAND_RESEEDING`.
+The audit found five constant names that were Linux's `#define` names rather than the manual's:
+`CTRL_EXEC_NOP`, `CTRL_GENE_RANDNUM`, `CTRL_EXEC_RANDRESEED` and `CTRL_EXEC_NONCE_RESEED` (Linux's
+names without their `STARFIVE_` prefix; the manual describes the four command values in words and
+names none of them), and `STAT_RAND_SEEDING` (the manual calls bit 31 `RAND_RESEEDING`). The crate
+now names them `CTRL_COMMAND_NONE`, `CTRL_COMMAND_GENERATE`, `CTRL_COMMAND_RESEED`,
+`CTRL_COMMAND_NONCE_RESEED` and `STAT_RESEEDING`. Each old spelling stays in a doc comment and in a
+`#[doc(alias)]`, so a search for it still lands on the constant. The other constant names are the
+manual's own register and field names (`CTRL`, `ISTAT`, `RAND_RDY`, `GLBL_EN` and the rest).
 
 ## The fixtures in nifeos/nife
 
