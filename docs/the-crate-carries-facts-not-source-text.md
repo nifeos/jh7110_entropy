@@ -117,11 +117,12 @@ The crate needs no `NOTICE` file and no third-party licence text.
 
 ## Identifiers that match a source name
 
-The audit found five constant names that were Linux's `#define` names rather than the manual's:
-`CTRL_EXEC_NOP`, `CTRL_GENE_RANDNUM`, `CTRL_EXEC_RANDRESEED` and `CTRL_EXEC_NONCE_RESEED` (Linux's
-names without their `STARFIVE_` prefix; the manual describes the four command values in words and
-names none of them), and `STAT_RAND_SEEDING` (the manual calls bit 31 `RAND_RESEEDING`). The crate
-now names them `CTRL_COMMAND_NONE`, `CTRL_COMMAND_GENERATE`, `CTRL_COMMAND_RESEED`,
+The audit found five constant names that were Linux's `#define` names rather than the manual's.
+Four are command values: `CTRL_EXEC_NOP`, `CTRL_GENE_RANDNUM`, `CTRL_EXEC_RANDRESEED` and
+`CTRL_EXEC_NONCE_RESEED`. They are Linux's names without their `STARFIVE_` prefix. The manual
+describes the four values in words and names none of them. The fifth is `STAT_RAND_SEEDING`, where
+the manual calls bit 31 `RAND_RESEEDING`. The crate now
+names them `CTRL_COMMAND_NONE`, `CTRL_COMMAND_GENERATE`, `CTRL_COMMAND_RESEED`,
 `CTRL_COMMAND_NONCE_RESEED` and `STAT_RESEEDING`. Each old spelling stays in a doc comment and in a
 `#[doc(alias)]`, so a search for it still lands on the constant. The other constant names are the
 manual's own register and field names (`CTRL`, `ISTAT`, `RAND_RDY`, `GLBL_EN` and the rest).
