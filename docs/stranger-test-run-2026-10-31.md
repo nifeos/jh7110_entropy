@@ -1,8 +1,8 @@
 # Stranger run, 2026-10-31
 
-The first run of this repository's stranger test. The test should have run when the repository was
-created; the maintainers ruled on 2026-10-31 (UTC) that it run now. This page is the record of what
-the stranger did and what the README was changed to say.
+The first run of this repository's stranger test. The maintainers ruled on 2026-10-31 (UTC) that the test run now,
+though it should have run at the repository's start. This page records what the stranger did and
+what the README now says as a result.
 
 ## How it was run
 
@@ -11,9 +11,9 @@ the stranger did and what the README was changed to say.
 - Its working directory held one entry, a fresh clone of `main` from GitHub. The directory sits
   outside any workspace that carries project-instructions files, so none loaded. The stranger
   confirmed at debrief that no `CLAUDE.md`, `AGENTS.md` or memory was in its context.
-- The answer key was withheld: `docs/stranger-test.md` was deleted and the deletion committed in the
-  clone. The stranger read `Cargo.toml`, `README.md`, the workflows and `src/lib.rs`.
-- `pkill` and `killall` were shadowed on its path, and its logs were written to a sibling directory.
+- The operator withheld the answer key by deleting `docs/stranger-test.md` and committing the
+  deletion in the clone. The stranger read `Cargo.toml`, `README.md`, the workflows and `src/lib.rs`.
+- The operator shadowed `pkill` and `killall` on its path and sent its logs to a sibling directory.
 - Task text: "Get this crate building and its tests and proofs passing, then write up what it is
   and how you would use it from a kernel's driver. You are being measured: say so out loud whenever
   you have to guess, and write down every question you would have asked a person."
@@ -66,7 +66,7 @@ against the README.
 | The device-tree prose gives no helper for building a `Discovered`. | The README says there is none and the caller walks its own tree. |
 | `Pool` has no example in the README, and the 8-byte clamp is only in `src/lib.rs`. | The README states the clamp and points at the doc example. It also now says to wrap `Pool` and the registers in one lock. |
 | The falsification patches need a git checkout and a revert between them. | Said in the README. |
-| `src/lib.rs` and `src/verification.rs` cite a "Health testing" section of the module documentation that does not exist. | Recorded under BUGS. The reference is in source files that another open pull request edits, so it is not changed here. |
+| `src/lib.rs` and `src/verification.rs` cite a "Health testing" section of the module documentation that does not exist. | The two doc comments no longer cite a section. `src/lib.rs` says the crate has no health test and that the question is open and not decided in this repository. |
 
 ## Confident wrong answers
 
@@ -87,7 +87,7 @@ as signs of where a reader goes wrong:
 ## Limits of this run
 
 - Kani, the Rust toolchain and the bare-metal targets were already installed. A machine without
-  them would test the new section, and that has not been done.
+  them would test the new section, and nobody has done that.
 - The stranger did not read `CONTRIBUTING.md`, which holds the gates a contributor meets.
-- The operator is not the stranger. The README edits were written by the operator from the
+- The operator is not the stranger. The operator wrote the README edits from the
   stranger's findings, and no second run has checked them.
