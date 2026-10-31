@@ -25,17 +25,17 @@ licence asks for. The section on fixtures below gives the two ways to settle it.
 
 ## How the comparison was made
 
-Each source file was downloaded at the revision the crate cites into a directory of its own. Every
-text file in this repository was then compared with each of them. Both sides were reduced to
-lower-case word tokens, with punctuation, comment markers and whitespace dropped, and hexadecimal
-numbers normalised so that `0x1600_C000` and `0x1600C000` compare equal. The check reports every
+The audit downloaded each source file at the revision the crate cites, into a directory of its
+own, and compared every text file in this repository with each of them. It reduced both sides to
+lower-case word tokens, dropping punctuation, comment markers and whitespace, and normalised
+hexadecimal numbers so that `0x1600_C000` and `0x1600C000` compare equal. The check reports every
 maximal run of identical tokens of length 4 or more. A second pass split identifiers at underscores,
 so that `STARFIVE_CTRL_GENE_RANDNUM` and `CTRL_GENE_RANDNUM` would meet. The same check ran over
 the fixtures in `nifeos/nife`.
 
 ## The sources and their licence headers
 
-Header lines are reproduced exactly; nothing else from the files is.
+The table reproduces the header lines exactly and nothing else from the files.
 
 | Source | Revision compared | Licence header |
 |---|---|---|
@@ -47,8 +47,8 @@ Header lines are reproduced exactly; nothing else from the files is.
 | NetBSD `sys/arch/riscv/starfive/jh7110_trng.c` | revision 1.2 (`$NetBSD: jh7110_trng.c,v 1.2 2025/02/09 09:09:49 skrll Exp $`) | No SPDX line. `Copyright (c) 2025 The NetBSD Foundation, Inc.`, followed by the NetBSD Foundation's two-clause BSD licence |
 | JH7110 Technical Reference Manual, "TRNG > Control Registers" | the HTML edition at `doc-en.rvspace.org`, which states "Preliminary V2", "2023/4/24", Doc ID `JH7110-TRMEN-001` | No licence. The page footer reads `© 2022 Sponsored by StarFive Technology . All rights reserved.` |
 
-What could not be established about the manual: whether the site has terms of use beyond that
-footer, and whether a PDF edition carries different terms. The crate cites the manual by edition
+About the manual, the audit could not establish whether the site has terms of use beyond that
+footer, or whether a PDF edition carries different terms. The crate cites the manual by edition
 and section title, which matches the HTML edition compared here.
 
 ## Inventory
@@ -82,7 +82,7 @@ Before the fixes, against this repository:
 - 11 tokens, vendor tree: the `trng@1600C000` node's label, name, `compatible` and `reg`.
 - 8 tokens, manual: the `SEEDx` description, twice.
 - 7 tokens, manual: the test-mode description and the `RQSTS` field values.
-- 5 tokens, manual: "interrupt and/or status contributions", which is kept.
+- 5 tokens, manual: "interrupt and/or status contributions", which the crate keeps.
 - 4 tokens, Linux driver: "true random number generator", "compatible starfive jh7110 trng", and
   `IE` field names such as `IE_RAND_RDY_EN`.
 - Nothing of 4 tokens or more from NetBSD's driver or the vendor Linux driver.
@@ -95,21 +95,21 @@ both whole nodes quoted in comments.
 
 ## What each licence allows here
 
-- GPL-2.0, both Linux drivers. Text copied from them could not be relicensed `MIT OR
+- GPL-2.0, both Linux drivers. Nobody could relicense text copied from them as `MIT OR
   Apache-2.0`, and no notice would cure that. The crate holds none. What it takes is offsets, bit
   positions and register names, which are facts about the silicon; whether a jurisdiction protects
   such a list is a question for a lawyer.
-- GPL-2.0-only OR BSD-2-Clause, the binding. Text may be reused under the BSD-2-Clause choice,
+- GPL-2.0-only OR BSD-2-Clause, the binding. You may reuse the text under the BSD-2-Clause choice,
   keeping its conditions and disclaimer in source copies. The file states no copyright holder. The
   crate holds only the compatible string; the `nifeos/nife` fixture quotes the example node with no
   notice.
-- GPL-2.0 OR MIT, both device trees. Text may be reused under the MIT choice, keeping the
+- GPL-2.0 OR MIT, both device trees. You may reuse the text under the MIT choice, keeping the
   copyright lines and the permission notice. The crate now holds none; the `nifeos/nife` vendor
   fixture quotes the node with no notice.
-- NetBSD's two-clause BSD. Text may be reused, keeping the copyright, the two conditions and the
+- NetBSD's two-clause BSD. You may reuse the text, keeping the copyright, the two conditions and the
   disclaimer. The crate holds none of its text; it cites the seeded gate and the alarm bit
   positions as facts and describes them in its own words.
-- The manual, all rights reserved. No licence is granted, so its prose may not be copied beyond
+- The manual, all rights reserved. It grants no licence, so nobody may copy its prose beyond
   short quotation. Its register names and values are facts. The crate quotes 5 words of it, in
   quotation marks, with the source named.
 
@@ -130,6 +130,6 @@ manual's own register and field names (`CTRL`, `ISTAT`, `RAND_RDY`, `GLBL_EN` an
 ## The fixtures in nifeos/nife
 
 Either remove the quoted nodes from the two `.dts` comments, naming the file and commit and listing
-the differences in prose, or add the notices. Removal is recommended: it keeps `nifeos/nife`'s
+the differences in prose, or add the notices. The audit recommends removal: it keeps `nifeos/nife`'s
 tree under one licence, matches what this crate now does, and loses nothing a reader needs, since
 the commit hash finds the original.
