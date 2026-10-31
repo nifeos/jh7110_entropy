@@ -59,11 +59,20 @@ A driver writes `MODE_R256` during bring-up (otherwise only four words carry the
 writes `CTRL_GENE_RANDNUM`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
 `Unseeded` it reseeds and retries, bounded.
 
+## On silicon
+
+What ran, and when. On 2026-09-04 a confined userspace driver in the nife kernel used this logic on radon, a VisionFive 2. It served 32 plus 32 bytes of real TRNG output on each of two boots. The first draw differed across the boots, and the two draws within a boot differed from each other. `STAT` read `0x00040308` after bring-up, which shows the chip is in 256-bit mode, so all eight `RAND` words are the answer. The bench found and fixed three faults: a gated clock and reset, a get that asked for more bytes than the channel carried, and an `ISTAT` clear that had to be write-one-to-clear. On 2026-09-16 the step was timed at 955,223 bytes per second. The records are in the roadmap of the [nifeos/nife](https://github.com/nifeos/nife) repository, under its TRNG driver entry and its entry on timing the hardware-entropy step.
+
+What is not established. The quality of the randomness is open. A TRNG has no known answer, and the bench checked only that the bytes were nonzero, differed across boots and differed between draws. There is no health test and no SP 800-90B-class measurement. Nife decision section 137 on health tests is still `PROPOSED`.
+
+What is not verified. This repository has not been run on the board since it moved out of nife. The copy here is not byte for byte the code that ran on 2026-09-04: the crate was named `jh7110_trng` then, and renames and documentation edits since have changed most lines. The decision function (`generation_outcome`, then `interpret`) and the byte layout (`output_bytes`, then `assemble`) read the same line for line in the two versions. The two versions have not been compared by running them.
+
+The clock and reset steps are outside this crate, as the first item under BUGS says.
+
 ## BUGS
 
 - The TRNG needs its clocks ungated and its reset released first. This crate does not do that;
   the `jh7110_clock_and_reset` crate holds the plan, or your platform must do it some other way.
-- None of it has run on silicon with a verified answer.
 - The device-tree fixtures it was tested against are excerpts of the mainline and vendor trees.
 
 Minimum Rust version: 1.88.

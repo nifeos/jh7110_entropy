@@ -6,7 +6,9 @@
 //! It never dereferences a pointer, so it is host-testable and Kani-reachable; the caller maps the
 //! register window and does the volatile reads. `ISTAT.RAND_RDY` counts only when `STAT.SEEDED` is
 //! set (NetBSD's rule), and `ISTAT.LFSR_LOCKUP`, the one hardware fault signal, is
-//! [`GenerationOutcome::Lockup`]. None of it has run on silicon.
+//! [`GenerationOutcome::Lockup`]. An earlier form of this logic ran on a real
+//! `VisionFive 2` in the nife kernel on 2026-09-04; this copy has not been re-run on the board, and the
+//! quality of the randomness is unmeasured (see the README).
 
 //! # Sources
 //!
