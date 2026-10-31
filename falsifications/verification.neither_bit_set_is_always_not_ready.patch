@@ -7,10 +7,10 @@ that has finished seeding but has produced nothing yet is read as `Ready` and yi
 Expected to fail: the harness's `assert_eq!(generation_outcome(stat, istat, rand), GenerationOutcome::NotReady)`: `SEED_DONE` alone now
 produces `Ready`.
 
-diff --git a/crates/jh7110_entropy/src/lib.rs b/crates/jh7110_entropy/src/lib.rs
+diff --git a/src/lib.rs b/src/lib.rs
 index b647a51d9..de09873d2 100644
---- a/crates/jh7110_entropy/src/lib.rs
-+++ b/crates/jh7110_entropy/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
 @@ -607,3 +607,3 @@ pub fn generation_outcome(stat: u32, istat: u32, rand: [u32; 8]) -> GenerationOutcome {
          GenerationOutcome::Unseeded
 -    } else if istat & ISTAT_RAND_RDY != 0 {

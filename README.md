@@ -22,7 +22,7 @@ the eight `RAND` words into an answer:
   yields bytes.
 
 Rerun them with `cargo kani`. Each harness has a falsification record at
-`falsifications/<module.path>.<harness>.patch`; applying it with `patch -p3` from the crate root
+`falsifications/<module.path>.<harness>.patch`; applying it with `git apply -p1` from the crate root
 makes that harness fail at its own assertion, which shows the proof checks something.
 
 Not proven: the quality of the randomness, which is a property of the silicon; `Pool` and
