@@ -239,10 +239,10 @@ pub const COMPATIBLE_MAINLINE: &[u8] = b"starfive,jh7110-trng";
 /// Same window (`0x1600_C000`), interrupt and clocks, a different string: a stale fork, not
 /// different silicon. Accepting it claims the [`registers`] layout, and `StarFive`'s own Linux driver
 /// for the block (`drivers/char/hw_random/starfive-trng.c` in `starfive-tech/linux` at
-/// `202b558ae34c`) defines byte-for-byte the same offsets and bits as mainline's. The node, in
-/// `arch/riscv/dts/jh7110.dtsi` of `starfive-tech/u-boot` at `bfbdce9b86a2`, reads
-/// `trng: trng@1600C000 { compatible = "starfive,trng"; reg = <0x0 0x1600C000 0x0 0x4000>;
-/// interrupts = <30>; status = "disabled"; }`.
+/// `202b558ae34c`) defines byte-for-byte the same offsets and bits as mainline's. The node is in
+/// `arch/riscv/dts/jh7110.dtsi` of `starfive-tech/u-boot` at `bfbdce9b86a2`. Its unit address is
+/// written with an upper-case `C`, its `reg` uses two address cells and two size cells for the
+/// same base and size, its `interrupts` names line 30, and its `status` is `disabled`.
 pub const COMPATIBLE_VENDOR: &[u8] = b"starfive,trng";
 
 /// Both spellings, in the order a caller should try them: mainline's first. A tree that carries
