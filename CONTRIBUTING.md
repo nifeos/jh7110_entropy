@@ -11,7 +11,8 @@ architecture and outcomes. That is disclosed rather than hidden, and it is the s
 anything that lands here (ruled for the org's repositories by 857's Fork 8). Outside contributions
 are welcome and reviewed the same way as agent-written ones: by what the diff does and what the
 proofs say. A pull request written by an agent opens by saying so, in its first line, because the
-account that pushes it is the maintainer's.
+account that pushes it is the maintainer's. A person outside the project who submits a change may use any tools they
+like and does not need to say which.
 
 ## What the gates will ask of a change
 
