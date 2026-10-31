@@ -73,10 +73,14 @@ The clock and reset steps are outside this crate, as the first item under BUGS s
 
 - The TRNG needs its clocks ungated and its reset released first. This crate does not do that;
   the `jh7110_clock_and_reset` crate holds the plan, or your platform must do it some other way.
-- The device-tree fixtures it was tested against are excerpts of the mainline and vendor trees.
+- The device-tree walk that uses it is tested against fixtures written by hand from the mainline
+  binding's example and the vendor U-Boot tree, not dumps from a board.
 
 Minimum Rust version: 1.88.
 
 ## License
 
 MIT OR Apache-2.0, at your option: see `LICENSE-MIT` and `LICENSE-APACHE`.
+
+What the crate takes from Linux, NetBSD, the vendor trees and the JH7110 manual, and why it owes
+them no notice, is in [docs/the-crate-carries-facts-not-source-text.md](docs/the-crate-carries-facts-not-source-text.md).
