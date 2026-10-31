@@ -15,10 +15,10 @@ harness verifying. Confirmed by applying the diff against the old phrasing and w
 it stay green. The rewrite states the little-endian layout the doc comment claims,
 indexed out of the words by hand, which the implementation does not get to choose.
 
-diff --git a/crates/jh7110_entropy/src/lib.rs b/crates/jh7110_entropy/src/lib.rs
+diff --git a/src/lib.rs b/src/lib.rs
 index 9905f92e..5aa771cf 100644
---- a/crates/jh7110_entropy/src/lib.rs
-+++ b/crates/jh7110_entropy/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
 @@ -291,7 +291,7 @@ pub fn generation_outcome(istat: u32, rand: [u32; 8]) -> GenerationOutcome {
  pub fn output_bytes(rand: [u32; 8]) -> [u8; 32] {
      let mut out = [0u8; 32];
