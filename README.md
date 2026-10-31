@@ -55,8 +55,8 @@ match generation_outcome(STAT_SEEDED, ISTAT_RAND_RDY, rand) {
 ```
 
 A driver writes `MODE_R256` during bring-up (otherwise only four words carry the answer), clears
-`ISTAT` with `ISTAT_ALL`, asks for a reseed with `CTRL_EXEC_RANDRESEED`, then for each request
-writes `CTRL_GENE_RANDNUM`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
+`ISTAT` with `ISTAT_ALL`, asks for a reseed with `CTRL_COMMAND_RESEED`, then for each request
+writes `CTRL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
 `Unseeded` it reseeds and retries, bounded.
 
 ## On silicon

@@ -59,9 +59,10 @@
 /// (\[driver\]). `RAND0..RAND7` are the eight 32-bit words a completed generation leaves behind;
 /// [`output_bytes`] is the order they combine in.
 pub mod registers {
-    /// Command register: write [`super::CTRL_GENE_RANDNUM`] or [`super::CTRL_EXEC_RANDRESEED`].
+    /// Command register: write [`super::CTRL_COMMAND_GENERATE`] or [`super::CTRL_COMMAND_RESEED`].
     pub const CTRL: u64 = 0x00;
-    /// Status register: read-only, [`super::STAT_SEEDED`] / `RAND_GENERATING` / `RAND_SEEDING`.
+    /// Status register: read-only, [`super::STAT_SEEDED`] / `RAND_GENERATING` /
+    /// [`super::STAT_RESEEDING`].
     pub const STAT: u64 = 0x04;
     /// Output width mode: [`super::MODE_R256`] selects a 256-bit rather than a 128-bit `RAND`
     /// answer.
@@ -128,21 +129,26 @@ pub mod registers {
     pub const BUILD_CONFIGURATION: u64 = 0x68;
 }
 
-/// `CTRL`: execute a NOP. \[trm\] lists it as one of the command encodings; the vendor driver
-/// issues it once between programming the mode registers and asking for a reseed. Named for
-/// completeness rather than used, since \[driver\] and \[netbsd\] both skip it.
-pub const CTRL_EXEC_NOP: u32 = 0x0;
-/// `CTRL`: ask the device for a fresh random number, 256-bit or 128-bit according to
-/// [`MODE_R256`].
-pub const CTRL_GENE_RANDNUM: u32 = 0x1;
-/// `CTRL`: force a reseed from the ring oscillator. The driver issues this once at init and again
-/// on every [`GenerationOutcome::Lockup`].
-pub const CTRL_EXEC_RANDRESEED: u32 = 0x2;
+/// `CTRL`: execute a NOP (`EXEC_NOP` in the vendor driver). \[trm\] lists it as one of the command
+/// encodings; the vendor driver issues it once between programming the mode registers and asking
+/// for a reseed. Named for completeness rather than used, since \[driver\] and \[netbsd\] both
+/// skip it.
+#[doc(alias = "CTRL_EXEC_NOP")]
+pub const CTRL_COMMAND_NONE: u32 = 0x0;
+/// `CTRL`: ask the device for a fresh random number (`GENE_RANDNUM` in the vendor driver),
+/// 256-bit or 128-bit according to [`MODE_R256`].
+#[doc(alias = "CTRL_GENE_RANDNUM")]
+pub const CTRL_COMMAND_GENERATE: u32 = 0x1;
+/// `CTRL`: force a reseed from the ring oscillator (`EXEC_RANDRESEED` in the vendor driver). The
+/// driver issues this once at init and again on every [`GenerationOutcome::Lockup`].
+#[doc(alias = "CTRL_EXEC_RANDRESEED")]
+pub const CTRL_COMMAND_RESEED: u32 = 0x2;
 /// `CTRL`: reseed from the host-written `SEED0..SEED7` words instead of from the ring oscillator
-/// \[trm\]. **Named so it is visibly not used**: a nonce reseed makes the output a function of
-/// bytes the host chose, which is the opposite of what an entropy source is for, and nothing in
-/// this tree should reach for it.
-pub const CTRL_EXEC_NONCE_RESEED: u32 = 0x3;
+/// \[trm\] (`EXEC_NONCE_RESEED` in the vendor driver). **Named so it is visibly not used**: a
+/// nonce reseed makes the output a function of bytes the host chose, which is the opposite of what
+/// an entropy source is for, and nothing in this tree should reach for it.
+#[doc(alias = "CTRL_EXEC_NONCE_RESEED")]
+pub const CTRL_COMMAND_NONCE_RESEED: u32 = 0x3;
 
 /// `MODE` bit 3: select a 256-bit `RAND0..RAND7` answer rather than a 128-bit `RAND0..RAND3` one.
 ///
@@ -169,11 +175,15 @@ pub const STAT_SEEDED: u32 = 1 << 9;
 /// `STAT` bit 27: there is an unacknowledged service request \[trm\].
 pub const STAT_SRVC_RQST: u32 = 1 << 27;
 /// `STAT` bit 30: a generation is in flight. The driver's `wait_idle` polls this (and
-/// `RAND_SEEDING`) clear before issuing a new command, so two commands are never in flight at
+/// [`STAT_RESEEDING`]) clear before issuing a new command, so two commands are never in flight at
 /// once.
 pub const STAT_RAND_GENERATING: u32 = 1 << 30;
-/// `STAT` bit 31: a reseed is in flight.
-pub const STAT_RAND_SEEDING: u32 = 1 << 31;
+/// `STAT` bit 31, `RAND_RESEEDING` in \[trm\] (`RAND_SEEDING` in the vendor driver): a reseed is
+/// in progress. This is not the opposite of [`STAT_SEEDED`], which records only that the device
+/// has been seeded at least once.
+#[doc(alias = "RAND_RESEEDING")]
+#[doc(alias = "STAT_RAND_SEEDING")]
+pub const STAT_RESEEDING: u32 = 1 << 31;
 
 /// `IE` bit 0: include `RAND_RDY` in the interrupt the block drives.
 pub const IE_RAND_RDY_EN: u32 = 1 << 0;
@@ -312,7 +322,7 @@ pub enum GenerationOutcome {
     /// first: see [`output_bytes`].
     Ready([u8; 32]),
     /// `ISTAT.LFSR_LOCKUP` was set: an SEU, per \[driver\]'s own comment. The caller should issue
-    /// `CTRL_EXEC_RANDRESEED` and retry, bounded: ask again a few times, then tell the truth.
+    /// [`CTRL_COMMAND_RESEED`] and retry, bounded: ask again a few times, then tell the truth.
     Lockup,
     /// Neither bit was set: still generating, or not yet asked. Not a failure on its own; a caller
     /// polls again, bounded by its own timeout (this crate does not impose one, because how long
@@ -721,7 +731,7 @@ mod tests {
             ("STAT", "SEEDED", 9, STAT_SEEDED),
             ("STAT", "SRVC_RQST", 27, STAT_SRVC_RQST),
             ("STAT", "RAND_GENERATING", 30, STAT_RAND_GENERATING),
-            ("STAT", "RAND_SEEDING", 31, STAT_RAND_SEEDING),
+            ("STAT", "RAND_RESEEDING", 31, STAT_RESEEDING),
             ("IE", "RAND_RDY_EN", 0, IE_RAND_RDY_EN),
             ("IE", "SEED_DONE_EN", 1, IE_SEED_DONE_EN),
             ("IE", "AGE_ALARM_EN", 2, IE_AGE_ALARM_EN),
