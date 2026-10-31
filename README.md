@@ -1,10 +1,10 @@
 # jh7110_entropy
 
 The logic of a driver for the true random number generator (TRNG) in the StarFive JH7110, the
-RISC-V system-on-chip of the VisionFive 2. It holds the register layout, the decision of whether a
-generation succeeded, failed or is still running, a small pool that serves the 32 bytes of one
-generation without serving any byte twice, and what each of the chip's two device trees calls the
-block. It never touches a register: you map the window and do the volatile reads, and this crate
+RISC-V system-on-chip of the VisionFive 2. It holds the register layout and the decision of whether a
+generation succeeded, failed or is still running. It also holds a small pool that serves the 32
+bytes of one generation without serving any byte twice, and what each of the chip's two device
+trees calls the block. It never touches a register: you map the window and do the volatile reads, and this crate
 decides what they mean. It is `no_std` and tested on the host. It was written for the nife kernel.
 
 ## What is proven
