@@ -13,4 +13,10 @@ What a run is:
    not against the stranger.
 4. Record the date on the line below.
 
-Last run: none
+Last run: 2026-10-31
+
+Result of that run: the stranger reached a passing build, 18 unit tests and 2 doctests, and all
+four Kani proofs, in 144 seconds and `$0.20`, with no question that blocked it. It did not have to
+install Kani, because the machine already had it, so the run could not show whether the README
+tells a newcomer how; it did not, and the README now does. The full record is in
+[the run appendix](stranger-test-run-2026-10-31.md).

@@ -7,6 +7,21 @@ bytes of one generation without serving any byte twice, and what each of the chi
 trees calls the block. It never touches a register: you map the window and do the volatile reads, and this crate
 decides what they mean. It is `no_std` and tested on the host. It was written for the nife kernel.
 
+## Build, test and prove
+
+You need a Rust toolchain at or above the minimum version at the foot of this page (`rustup` is the
+usual way to get one) and a git checkout. From the crate root:
+
+- `cargo build` and `cargo test` run on the host and need nothing else. The tests are 18 unit tests
+  and 2 doctests.
+- The crate also builds for bare metal. Add the three targets with `rustup target add
+  riscv64imac-unknown-none-elf aarch64-unknown-none-softfloat x86_64-unknown-none`. Then run
+  `cargo build --lib --target <target>` for each. CI does exactly this.
+- The proofs need Kani, which `rustup` does not install. Run `cargo install --locked
+  kani-verifier --version 0.68.0`, then `cargo kani setup`. The setup step downloads a model
+  checker, so it needs network access. CI uses version 0.68.0, and another version may verify
+  differently. After that, `cargo kani` runs all four harnesses.
+
 ## What is proven
 
 Four Kani harnesses exhaust `generation_outcome`, the function that turns one `(STAT, ISTAT)` snapshot and
@@ -21,12 +36,15 @@ the eight `RAND` words into an answer:
 - `verification::an_unseeded_core_never_yields_bytes`: with `STAT.SEEDED` clear, no `ISTAT` value
   yields bytes.
 
-Rerun them with `cargo kani`. Each harness has a falsification record at
+Each harness has a falsification record at
 `falsifications/<module.path>.<harness>.patch`; applying it with `git apply -p1` from the crate root
-makes that harness fail at its own assertion, which shows the proof checks something.
+makes that harness fail at its own assertion, which shows the proof checks something. The patches
+need a git checkout, and you revert each one with `git checkout -- src` before the next.
 
 Not proven: the quality of the randomness, which is a property of the silicon; `Pool` and
 `output_bytes`, which copy words and are tested; and the device-tree decoders, which are tested.
+`Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment carries a runnable
+example.
 
 ## The two device trees
 
@@ -35,7 +53,8 @@ VisionFive 2 boots with, names the same block `starfive,trng`, at the same windo
 `0x4000` bytes) and interrupt (30), and marks it `status = "disabled"` because U-Boot has no driver
 for it. `COMPATIBLES` lists both, mainline's first. Walk your tree for a node carrying one, read
 its `reg`, decode `interrupts` with `interrupt_line` and `status` with `is_status_okay`, and keep the
-result in a `Discovered`. A disabled node is the first suspect when the window reads all zeros.
+result in a `Discovered`. A disabled node is the first suspect when the window reads all zeros. The crate has no helper that
+walks a tree for you; it decodes the properties and you do the walking with your own parser.
 
 ## EXAMPLES
 
@@ -57,7 +76,10 @@ match generation_outcome(STAT_SEEDED, ISTAT_RAND_RDY, rand) {
 A driver writes `MODE_R256` during bring-up (otherwise only four words carry the answer), clears
 `ISTAT` with `ISTAT_ALL`, asks for a reseed with `CTRL_COMMAND_RESEED`, then for each request
 writes `CTRL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
-`Unseeded` it reseeds and retries, bounded.
+`Unseeded` it reseeds and retries, bounded. The crate sets no bound, no poll interval and no
+timeout: you pick them, ideally from a measurement on your board. The only timing figure here is the
+955,223 bytes per second under "On silicon". Wrap `Pool` and the register access in one lock; `Pool`
+does no locking of its own.
 
 ## On silicon
 
@@ -73,6 +95,11 @@ The clock and reset steps are outside this crate, as the first item under BUGS s
 
 - The TRNG needs its clocks ungated and its reset released first. This crate does not do that;
   the `jh7110_clock_and_reset` crate holds the plan, or your platform must do it some other way.
+  That crate is in the crates directory of the [nifeos/nife](https://github.com/nifeos/nife)
+  repository, not in this checkout, and this crate does not depend on it.
+- The documentation in `src/lib.rs` and `src/verification.rs` refers to a "Health testing" section of
+  the module documentation. No such section exists yet; the README's "On silicon" part says what is
+  known about health testing, which is that none has been written.
 - The device-tree walk that uses it is tested against fixtures written by hand from the mainline
   binding's example and the vendor U-Boot tree, not dumps from a board.
 
