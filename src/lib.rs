@@ -6,9 +6,8 @@
 //! It never dereferences a pointer, so it is host-testable and Kani-reachable; the caller maps the
 //! register window and does the volatile reads. `ISTAT.RAND_RDY` counts only when `STAT.SEEDED` is
 //! set (NetBSD's rule), and `ISTAT.LFSR_LOCKUP`, the one hardware fault signal, is
-//! [`GenerationOutcome::Lockup`]. An earlier form of this logic ran on a real
-//! `VisionFive 2` in the nife kernel on 2026-09-04; this copy has not been re-run on the board, and the
-//! quality of the randomness is unmeasured (see the README).
+//! [`GenerationOutcome::Lockup`]. This copy has not run on the board, and the quality of the
+//! randomness is unmeasured; the README's "On silicon" section says what ran and when.
 
 //! # Sources
 //!
@@ -199,8 +198,8 @@ pub const IE_LFSR_LOCKUP_EN: u32 = 1 << 4;
 ///
 /// **The `IE_*` bits gate the IRQ pin, not [`registers::ISTAT`]**, so a polling driver may leave this
 /// register at zero. \[trm\]'s wording ("interrupt **and/or status** contributions") is not
-/// decisive; the bench settled it on 2026-09-04, when a reseed and a generation were both seen by
-/// polling `ISTAT` with `IE` never written on a `VisionFive 2`. The completion interrupt needs this
+/// decisive; a reseed and a generation both showed up by polling `ISTAT`
+/// with `IE` never written, on a `VisionFive 2` (the README's "On silicon" section dates the run). The completion interrupt needs this
 /// bit plus the contribution bits, at PLIC line 30 (\[binding\]'s `interrupts = <30>`); a polling
 /// driver needs none of them.
 pub const IE_GLBL_EN: u32 = 1 << 31;
@@ -224,9 +223,9 @@ pub(crate) const ISTAT_RQST_ALARM: u32 = 1 << 3;
 /// post-processing stage. The Linux driver treats this as "reseed and try again", never as "trust
 /// the RAND registers anyway"; [`generation_outcome`] gives it priority over `RAND_RDY` in the same
 /// snapshot for the same reason (a register file that says both "ready" and "faulted" at once
-/// must not be read as an answer). See the module doc's "Health testing" section: this is the one
-/// hardware self-check the datasheet documents, and it is not a substitute for a statistical
-/// health test over the bitstream, which the datasheet does not claim either.
+/// must not be read as an answer). This is the one hardware self-check the datasheet documents. It
+/// is not a statistical health test over the bitstream, which the datasheet does not claim either.
+/// This crate has no such test, and whether it needs one is open and not decided in this repository.
 pub const ISTAT_LFSR_LOCKUP: u32 = 1 << 4;
 
 /// Every `ISTAT` bit this crate can name, for the write-1-to-clear that starts a bring-up.

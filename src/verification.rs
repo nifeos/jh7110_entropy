@@ -8,9 +8,8 @@ use super::*;
 /// Falsification: replayable `falsifications/verification.a_lockup_bit_is_never_overridden.patch`
 /// **A hardware fault is never read as a clean answer.** For every `istat` with
 /// `LFSR_LOCKUP` set, `generation_outcome` returns `Lockup`, regardless of what `RAND_RDY` or any other
-/// bit says and regardless of what the `RAND` words happen to hold. This is the property the
-/// module doc's "Health testing" section argues for in prose; here it holds for the full
-/// `2^32` space of `istat`, not the two combinations the unit tests above pick.
+/// bit says and regardless of what the `RAND` words happen to hold. Here the property holds for
+/// the full `2^32` space of `istat`, not the two combinations the unit tests above pick.
 #[kani::proof]
 fn a_lockup_bit_is_never_overridden() {
     let stat: u32 = kani::any();

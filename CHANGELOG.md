@@ -7,7 +7,10 @@ sentence beside it.
 
 - First version.
 - Doc comments state the vendor tree's TRNG node and five manual register descriptions in the
-  crate's own words, so no source text is copied.
+  crate's own words, so the crate copies no source text.
+- Doc comments no longer cite a "Health testing" section that does not exist. `ISTAT_LFSR_LOCKUP` says
+  the crate has no health test and that the question is open. The crate-level doc keeps the
+  current status and leaves the dated history to the README.
 
 ## BUGS
 
