@@ -6,6 +6,8 @@ sentence beside it.
 ## Unreleased
 
 - First version.
+- Doc comments state the vendor tree's TRNG node and five manual register descriptions in the
+  crate's own words, so no source text is copied.
 
 ## BUGS
 
