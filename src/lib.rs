@@ -59,9 +59,10 @@
 /// (\[driver\]). `RAND0..RAND7` are the eight 32-bit words a completed generation leaves behind;
 /// [`output_bytes`] is the order they combine in.
 pub mod registers {
-    /// Command register: write [`super::CTRL_GENE_RANDNUM`] or [`super::CTRL_EXEC_RANDRESEED`].
+    /// Command register: write [`super::CTRL_COMMAND_GENERATE`] or [`super::CTRL_COMMAND_RESEED`].
     pub const CTRL: u64 = 0x00;
-    /// Status register: read-only, [`super::STAT_SEEDED`] / `RAND_GENERATING` / `RAND_SEEDING`.
+    /// Status register: read-only, [`super::STAT_SEEDED`] / `RAND_GENERATING` /
+    /// [`super::STAT_RESEEDING`].
     pub const STAT: u64 = 0x04;
     /// Output width mode: [`super::MODE_R256`] selects a 256-bit rather than a 128-bit `RAND`
     /// answer.
@@ -86,7 +87,7 @@ pub mod registers {
     /// writing a one to it, as \[driver\] and \[netbsd\] both do. A driver that only ever reads
     /// this register sees `RAND_RDY` stay set forever after the first generation.
     pub const ISTAT: u64 = 0x14;
-    /// Build-time parameter enumerations, read-only: `MISSION_MODE_RESET_STATE`,
+    /// Read-only fields fixed when the block was built: `MISSION_MODE_RESET_STATE`,
     /// `RAND_SEED_AVAIL` and `MAX_RAND_LENGTH` \[trm\]. Offset named so a bench session can dump
     /// it; nothing here reads it.
     pub const FEATURES: u64 = 0x1C;
@@ -106,42 +107,48 @@ pub mod registers {
     pub const RAND6: u64 = 0x38;
     /// See [`RAND0`].
     pub const RAND7: u64 = 0x3C;
-    /// The eight seed words, used to load a host-generated nonce seed and, per \[trm\], "in
-    /// several test modes to access internal data". This crate never seeds by nonce (it asks the
-    /// ring oscillator for a random reseed instead), so these are offsets only.
+    /// The eight seed words. The host writes a seed of its own choosing here for a nonce reseed,
+    /// and \[trm\] says the test modes also read internal state through them. This crate never
+    /// seeds by nonce (it asks the ring oscillator for a random reseed instead), so these are
+    /// offsets only.
     pub const SEED0: u64 = 0x40;
     /// See [`SEED0`]. The set runs `SEED0`..`SEED7` at `0x40`..`0x5C`.
     pub const SEED7: u64 = 0x5C;
-    /// Auto-reseed request-count threshold, and **zero is what disables it**: \[trm\] says a
-    /// `RQSTS` field of 0 means "disable the `AUTO_RQSTS` alarm feature", other values are a
-    /// reload value for the internal counter. \[driver\] writes its `autoreq` module parameter
+    /// Auto-reseed request-count threshold, and **zero is what disables it**: per \[trm\], a
+    /// `RQSTS` field of 0 turns the `AUTO_RQSTS` alarm off, and any other value is what the
+    /// block's internal countdown starts from. \[driver\] writes its `autoreq` module parameter
     /// here during init, which defaults to 0, so upstream's default bring-up disables the alarm
     /// rather than leaving whatever the reset value is in place.
     pub const AUTO_RQSTS: u64 = 0x60;
     /// Auto-reseed age (time) threshold. Same shape as [`AUTO_RQSTS`]: 0 disables the `AUTO_AGE`
     /// alarm, and \[driver\] writes 0 there at init via its `autoage` parameter.
     pub const AUTO_AGE: u64 = 0x64;
-    /// Build-time configuration enumerations, read-only \[trm\] (the register \[trm\] itself
-    /// calls `BUILD_CONFIG`). The highest offset the register map defines, which is why one 4 KiB
-    /// page covers this device with room to spare.
+    /// Read-only fields describing how the block was configured when built \[trm\] (the register
+    /// \[trm\] itself calls `BUILD_CONFIG`). The highest offset the register map defines, which is
+    /// why one 4 KiB page covers this device with room to spare.
     pub const BUILD_CONFIGURATION: u64 = 0x68;
 }
 
-/// `CTRL`: execute a NOP. \[trm\] lists it as one of the command encodings; the vendor driver
-/// issues it once between programming the mode registers and asking for a reseed. Named for
-/// completeness rather than used, since \[driver\] and \[netbsd\] both skip it.
-pub const CTRL_EXEC_NOP: u32 = 0x0;
-/// `CTRL`: ask the device for a fresh random number, 256-bit or 128-bit according to
-/// [`MODE_R256`].
-pub const CTRL_GENE_RANDNUM: u32 = 0x1;
-/// `CTRL`: force a reseed from the ring oscillator. The driver issues this once at init and again
-/// on every [`GenerationOutcome::Lockup`].
-pub const CTRL_EXEC_RANDRESEED: u32 = 0x2;
+/// `CTRL`: execute a NOP (`EXEC_NOP` in the vendor driver). \[trm\] lists it as one of the command
+/// encodings; the vendor driver issues it once between programming the mode registers and asking
+/// for a reseed. Named for completeness rather than used, since \[driver\] and \[netbsd\] both
+/// skip it.
+#[doc(alias = "CTRL_EXEC_NOP")]
+pub const CTRL_COMMAND_NONE: u32 = 0x0;
+/// `CTRL`: ask the device for a fresh random number (`GENE_RANDNUM` in the vendor driver),
+/// 256-bit or 128-bit according to [`MODE_R256`].
+#[doc(alias = "CTRL_GENE_RANDNUM")]
+pub const CTRL_COMMAND_GENERATE: u32 = 0x1;
+/// `CTRL`: force a reseed from the ring oscillator (`EXEC_RANDRESEED` in the vendor driver). The
+/// driver issues this once at init and again on every [`GenerationOutcome::Lockup`].
+#[doc(alias = "CTRL_EXEC_RANDRESEED")]
+pub const CTRL_COMMAND_RESEED: u32 = 0x2;
 /// `CTRL`: reseed from the host-written `SEED0..SEED7` words instead of from the ring oscillator
-/// \[trm\]. **Named so it is visibly not used**: a nonce reseed makes the output a function of
-/// bytes the host chose, which is the opposite of what an entropy source is for, and nothing in
-/// this tree should reach for it.
-pub const CTRL_EXEC_NONCE_RESEED: u32 = 0x3;
+/// \[trm\] (`EXEC_NONCE_RESEED` in the vendor driver). **Named so it is visibly not used**: a
+/// nonce reseed makes the output a function of bytes the host chose, which is the opposite of what
+/// an entropy source is for, and nothing in this tree should reach for it.
+#[doc(alias = "CTRL_EXEC_NONCE_RESEED")]
+pub const CTRL_COMMAND_NONCE_RESEED: u32 = 0x3;
 
 /// `MODE` bit 3: select a 256-bit `RAND0..RAND7` answer rather than a 128-bit `RAND0..RAND3` one.
 ///
@@ -151,8 +158,8 @@ pub const CTRL_EXEC_NONCE_RESEED: u32 = 0x3;
 /// [`STAT_R256`] is how a driver finds out what it actually got.
 pub const MODE_R256: u32 = 1 << 3;
 
-/// `SMODE` bit 8: mission mode (1) rather than test mode (0). In test mode \[trm\] gives the host
-/// "access to internal state and test fields", which is not a mode an entropy source should serve
+/// `SMODE` bit 8: mission mode (1) rather than test mode (0). In test mode \[trm\] lets the host
+/// see the generator's internal state, which is not a mode an entropy source should serve
 /// from. None of the three drivers cited writes this bit, so this crate names it and leaves the
 /// reset value alone; [`STAT_MISSION_MODE`] reports which mode the block is in.
 pub const SMODE_MISSION_MODE: u32 = 1 << 8;
@@ -168,11 +175,15 @@ pub const STAT_SEEDED: u32 = 1 << 9;
 /// `STAT` bit 27: there is an unacknowledged service request \[trm\].
 pub const STAT_SRVC_RQST: u32 = 1 << 27;
 /// `STAT` bit 30: a generation is in flight. The driver's `wait_idle` polls this (and
-/// `RAND_SEEDING`) clear before issuing a new command, so two commands are never in flight at
+/// [`STAT_RESEEDING`]) clear before issuing a new command, so two commands are never in flight at
 /// once.
 pub const STAT_RAND_GENERATING: u32 = 1 << 30;
-/// `STAT` bit 31: a reseed is in flight.
-pub const STAT_RAND_SEEDING: u32 = 1 << 31;
+/// `STAT` bit 31, `RAND_RESEEDING` in \[trm\] (`RAND_SEEDING` in the vendor driver): a reseed is
+/// in progress. This is not the opposite of [`STAT_SEEDED`], which records only that the device
+/// has been seeded at least once.
+#[doc(alias = "RAND_RESEEDING")]
+#[doc(alias = "STAT_RAND_SEEDING")]
+pub const STAT_RESEEDING: u32 = 1 << 31;
 
 /// `IE` bit 0: include `RAND_RDY` in the interrupt the block drives.
 pub const IE_RAND_RDY_EN: u32 = 1 << 0;
@@ -239,10 +250,10 @@ pub const COMPATIBLE_MAINLINE: &[u8] = b"starfive,jh7110-trng";
 /// Same window (`0x1600_C000`), interrupt and clocks, a different string: a stale fork, not
 /// different silicon. Accepting it claims the [`registers`] layout, and `StarFive`'s own Linux driver
 /// for the block (`drivers/char/hw_random/starfive-trng.c` in `starfive-tech/linux` at
-/// `202b558ae34c`) defines byte-for-byte the same offsets and bits as mainline's. The node, in
-/// `arch/riscv/dts/jh7110.dtsi` of `starfive-tech/u-boot` at `bfbdce9b86a2`, reads
-/// `trng: trng@1600C000 { compatible = "starfive,trng"; reg = <0x0 0x1600C000 0x0 0x4000>;
-/// interrupts = <30>; status = "disabled"; }`.
+/// `202b558ae34c`) defines byte-for-byte the same offsets and bits as mainline's. The node is in
+/// `arch/riscv/dts/jh7110.dtsi` of `starfive-tech/u-boot` at `bfbdce9b86a2`. Its unit address is
+/// written with an upper-case `C`, its `reg` uses two address cells and two size cells for the
+/// same base and size, its `interrupts` names line 30, and its `status` is `disabled`.
 pub const COMPATIBLE_VENDOR: &[u8] = b"starfive,trng";
 
 /// Both spellings, in the order a caller should try them: mainline's first. A tree that carries
@@ -311,7 +322,7 @@ pub enum GenerationOutcome {
     /// first: see [`output_bytes`].
     Ready([u8; 32]),
     /// `ISTAT.LFSR_LOCKUP` was set: an SEU, per \[driver\]'s own comment. The caller should issue
-    /// `CTRL_EXEC_RANDRESEED` and retry, bounded: ask again a few times, then tell the truth.
+    /// [`CTRL_COMMAND_RESEED`] and retry, bounded: ask again a few times, then tell the truth.
     Lockup,
     /// Neither bit was set: still generating, or not yet asked. Not a failure on its own; a caller
     /// polls again, bounded by its own timeout (this crate does not impose one, because how long
@@ -720,7 +731,7 @@ mod tests {
             ("STAT", "SEEDED", 9, STAT_SEEDED),
             ("STAT", "SRVC_RQST", 27, STAT_SRVC_RQST),
             ("STAT", "RAND_GENERATING", 30, STAT_RAND_GENERATING),
-            ("STAT", "RAND_SEEDING", 31, STAT_RAND_SEEDING),
+            ("STAT", "RAND_RESEEDING", 31, STAT_RESEEDING),
             ("IE", "RAND_RDY_EN", 0, IE_RAND_RDY_EN),
             ("IE", "SEED_DONE_EN", 1, IE_SEED_DONE_EN),
             ("IE", "AGE_ALARM_EN", 2, IE_AGE_ALARM_EN),

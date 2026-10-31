@@ -74,8 +74,8 @@ match generation_outcome(STAT_SEEDED, ISTAT_RAND_RDY, rand) {
 ```
 
 A driver writes `MODE_R256` during bring-up (otherwise only four words carry the answer), clears
-`ISTAT` with `ISTAT_ALL`, asks for a reseed with `CTRL_EXEC_RANDRESEED`, then for each request
-writes `CTRL_GENE_RANDNUM`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
+`ISTAT` with `ISTAT_ALL`, asks for a reseed with `CTRL_COMMAND_RESEED`, then for each request
+writes `CTRL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
 `Unseeded` it reseeds and retries, bounded. The crate sets no bound, no poll interval and no
 timeout: you pick them, ideally from a measurement on your board. The only timing figure here is the
 955,223 bytes per second under "On silicon". Wrap `Pool` and the register access in one lock; `Pool`
@@ -100,10 +100,14 @@ The clock and reset steps are outside this crate, as the first item under BUGS s
 - The documentation in `src/lib.rs` and `src/verification.rs` refers to a "Health testing" section of
   the module documentation. No such section exists yet; the README's "On silicon" part says what is
   known about health testing, which is that none has been written.
-- The device-tree fixtures it was tested against are excerpts of the mainline and vendor trees.
+- The device-tree walk that uses it is tested against fixtures written by hand from the mainline
+  binding's example and the vendor U-Boot tree, not dumps from a board.
 
 Minimum Rust version: 1.88.
 
 ## License
 
 MIT OR Apache-2.0, at your option: see `LICENSE-MIT` and `LICENSE-APACHE`.
+
+What the crate takes from Linux, NetBSD, the vendor trees and the JH7110 manual, and why it owes
+them no notice, is in [docs/the-crate-carries-facts-not-source-text.md](docs/the-crate-carries-facts-not-source-text.md).
