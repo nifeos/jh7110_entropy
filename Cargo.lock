@@ -4,4 +4,4 @@ version = 4
 
 [[package]]
 name = "jh7110_entropy"
-version = "0.1.0"
+version = "0.1.1"
