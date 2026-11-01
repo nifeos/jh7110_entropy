@@ -3,25 +3,19 @@
 This is an engineering audit, written by an AI agent that is not a lawyer, and it is not legal
 advice. It records what the crate takes from each source it cites, compared mechanically against
 that source at the cited revision, and what each source's licence header says. A lawyer can check
-every row against the files named here.
+every row against the files named here. The audit covers this repository only.
 
 The question, asked 2026-10-31: does the crate break the licence of Linux, or of any other source
-it cites? It transcribes register offsets, bit positions, names and device-tree facts from them,
-and its README called its device-tree fixtures excerpts of the mainline and vendor trees.
+it cites? It transcribes register offsets, bit positions, names and device-tree facts from them.
 
 ## Verdict
 
-Within this repository: found and fixed. Two kinds of copied text were present, and both are
+Found and fixed. Two kinds of copied text were present, and both are
 now rewritten in the crate's own words. One was an 11-token excerpt of the vendor U-Boot device-tree
 node in a doc comment; the other was five short runs of 4 to 8 tokens from the JH7110 Technical
 Reference Manual's register descriptions. No text from either Linux driver or from NetBSD's driver
 was present: the longest run shared with any of them is 4 tokens, and every such run is a hardware
 name or a stock phrase.
-
-In the fixtures the README refers to: found and needs a decision. Those fixtures are not in
-this repository. They live in `nifeos/nife`, under `crates/machine_discovery/tests/fixtures/`, and
-their comments quote two whole device-tree nodes verbatim without the notice either source's
-licence asks for. The section on fixtures below gives the two ways to settle it.
 
 ## How the comparison was made
 
@@ -30,8 +24,7 @@ own, and compared every text file in this repository with each of them. It reduc
 lower-case word tokens, dropping punctuation, comment markers and whitespace, and normalised
 hexadecimal numbers so that `0x1600_C000` and `0x1600C000` compare equal. The check reports every
 maximal run of identical tokens of length 4 or more. A second pass split identifiers at underscores,
-so that `STARFIVE_CTRL_GENE_RANDNUM` and `CTRL_GENE_RANDNUM` would meet. The same check ran over
-the fixtures in `nifeos/nife`.
+so that `STARFIVE_CTRL_GENE_RANDNUM` and `CTRL_GENE_RANDNUM` would meet.
 
 ## The sources and their licence headers
 
@@ -71,9 +64,6 @@ identical run longer than a few tokens).
 | `src/verification.rs`, `falsifications/` | proofs and the patches that break them | none | own words |
 | `README.md` | the two strings, the window, interrupt 30, `status = "disabled"` | binding, vendor tree | fact, in own words |
 | `CHANGELOG.md`, `docs/stranger-test.md` | nothing from any source | none | own words |
-| `nifeos/nife`, `jh7110-trng-present.dts` comment | the binding's whole example node, 8 lines | binding | verbatim, 24 tokens |
-| `nifeos/nife`, `jh7110-trng-vendor-uboot.dts` comment | the vendor's whole TRNG node, 10 lines | vendor tree | verbatim, 27 tokens |
-| `nifeos/nife`, both `.dts` bodies and their `.dtb` | the node cut to the properties the walk reads | binding, vendor tree | fact |
 
 ## The longest runs found
 
@@ -90,9 +80,6 @@ Before the fixes, against this repository:
 After the fixes, the 5-token quotation is the longest run with any source, and no run from either
 GPL-2.0 driver exceeds 4 tokens.
 
-Against the fixtures in `nifeos/nife`: 27 tokens with the vendor tree and 24 with the binding,
-both whole nodes quoted in comments.
-
 ## What each licence allows here
 
 - GPL-2.0, both Linux drivers. Nobody could relicense text copied from them as `MIT OR
@@ -101,11 +88,9 @@ both whole nodes quoted in comments.
   such a list is a question for a lawyer.
 - GPL-2.0-only OR BSD-2-Clause, the binding. You may reuse the text under the BSD-2-Clause choice,
   keeping its conditions and disclaimer in source copies. The file states no copyright holder. The
-  crate holds only the compatible string; the `nifeos/nife` fixture quotes the example node with no
-  notice.
+  crate holds only the compatible string.
 - GPL-2.0 OR MIT, both device trees. You may reuse the text under the MIT choice, keeping the
-  copyright lines and the permission notice. The crate now holds none; the `nifeos/nife` vendor
-  fixture quotes the node with no notice.
+  copyright lines and the permission notice. The crate now holds none.
 - NetBSD's two-clause BSD. You may reuse the text, keeping the copyright, the two conditions and the
   disclaimer. The crate holds none of its text; it cites the seeded gate and the alarm bit
   positions as facts and describes them in its own words.
@@ -126,10 +111,3 @@ names them `CTRL_COMMAND_NONE`, `CTRL_COMMAND_GENERATE`, `CTRL_COMMAND_RESEED`,
 `CTRL_COMMAND_NONCE_RESEED` and `STAT_RESEEDING`. Each old spelling stays in a doc comment and in a
 `#[doc(alias)]`, so a search for it still lands on the constant. The other constant names are the
 manual's own register and field names (`CTRL`, `ISTAT`, `RAND_RDY`, `GLBL_EN` and the rest).
-
-## The fixtures in nifeos/nife
-
-Either remove the quoted nodes from the two `.dts` comments, naming the file and commit and listing
-the differences in prose, or add the notices. The audit recommends removal: it keeps `nifeos/nife`'s
-tree under one licence, matches what this crate now does, and loses nothing a reader needs, since
-the commit hash finds the original.

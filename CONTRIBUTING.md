@@ -8,7 +8,7 @@ shared workflows are the gate, and a red job names its own fix.
 
 This project's code is written by AI agents working in parallel lanes, with one human reviewing
 architecture and outcomes. That is disclosed rather than hidden, and it is the standing rule for
-anything that lands here (ruled for the org's repositories by 857's Fork 8). Outside contributions
+anything that lands here (the organization's rule for its repositories). Outside contributions
 are welcome and reviewed the same way as agent-written ones: by what the diff does and what the
 proofs say. A pull request written by an agent opens by saying so, in its first line, because the
 account that pushes it is the maintainer's. A person outside the project who submits a change may use any tools they
@@ -20,5 +20,5 @@ like and does not need to say which.
   from any other tree (the `standalone` job reads for it).
 - A proof harness carries a falsification patch, or a reason of at least 200 characters that it
   cannot.
-- A dependency new to the graph holds the pull request for the architect's ruling, and so does a
-  breaking change against the last release. `script/record-ruling` records the answer.
+- A dependency new to the graph holds the pull request for the maintainers' ruling, and so does a
+  breaking change against the last release.

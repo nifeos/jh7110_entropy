@@ -41,7 +41,7 @@ live in the shared workflow repository that CI calls, which a stranger cannot se
 
 1. Should "get it building" include anything beyond the host and the three bare-metal targets in
    CI? (For example MSRV 1.88, `--locked`, `cargo deny`.)
-2. Which kernel is the target: the nife kernel specifically, or a generic one?
+2. Which kernel is the target: one specific kernel, or a generic one? (The stranger named a specific kernel here; the name is left out of this record.)
 3. Is the write-up for people who already know the JH7110, or for newcomers?
 4. Where should the write-up live, and in what format?
 5. Is there a board available to run this on?
@@ -50,7 +50,7 @@ live in the shared workflow repository that CI calls, which a stranger cannot se
 7. What `MAX_POLLS` and `MAX_RETRIES` do you want? The README gives a throughput number but no
    per-generation latency.
 8. What does "the clock and reset steps are outside this crate" mean in practice for your kernel?
-   The README points at a `jh7110_clock_and_reset` crate that is not in this checkout.
+   The README pointed at a clock-and-reset crate that is not in this checkout.
 
 Questions 3, 4 and 6 are about the task and not the repository. Questions 1, 7 and 8 are findings
 against the README.
@@ -62,7 +62,7 @@ against the README.
 | The README never says how to build or test; the stranger took `cargo test` and the bare-metal targets from `ci.yml`. | New "Build, test and prove" section. |
 | The README never says Kani is a separate install, or which version. Its only line is "Rerun them with `cargo kani`." | The section gives `cargo install --locked kani-verifier --version 0.68.0`, `cargo kani setup` and the network need. |
 | "On `Lockup` or `Unseeded` it reseeds and retries, bounded." gives no bound. | The README now says the crate sets no bound, interval or timeout and the driver picks them. |
-| "the `jh7110_clock_and_reset` crate holds the plan" has no location, and the crate is not in the checkout. | BUGS names where it is: the nifeos/nife repository, and says this crate does not depend on it. |
+| "the `jh7110_clock_and_reset` crate holds the plan" has no location, and the crate is not in the checkout. | BUGS no longer points at a crate. It says this crate does not do the clock and reset steps and the platform must. |
 | The device-tree prose gives no helper for building a `Discovered`. | The README says there is none and the caller walks its own tree. |
 | `Pool` has no example in the README, and the 8-byte clamp is only in `src/lib.rs`. | The README states the clamp and points at the doc example. It also now says to wrap `Pool` and the registers in one lock. |
 | The falsification patches need a git checkout and a revert between them. | Said in the README. |

@@ -3,6 +3,10 @@
 Dates are UTC. One line per release, what changed and why, so a reader of the diff has the
 sentence beside it.
 
+## 0.1.1
+
+- The documentation no longer refers to any consumer of the crate.
+
 ## Unreleased
 
 - First version.
