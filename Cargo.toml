@@ -1,6 +1,6 @@
 [package]
 name = "jh7110_entropy"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.88"
 description = "StarFive JH7110 true random number generator logic: registers, the success decision and both device trees' bindings, proven with Kani"
