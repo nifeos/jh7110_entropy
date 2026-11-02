@@ -1,0 +1,18 @@
+# cargo-mutants configuration, read from the crate root.
+#
+# src/verification.rs is `#[cfg(kani)]` (see the end of src/lib.rs), so `cargo test` never
+# compiles it: a change to it cannot fail any test, and 38 of its mutants were reported as missed
+# for that reason alone. Its proofs are checked by Kani in CI, and each proof carries a
+# falsification patch under falsifications/ that must make Kani fail. That is this file's
+# mutation testing. Mutating it with the unit-test suite measures nothing.
+exclude_globs = ["src/verification.rs"]
+
+# ISTAT_ALL (src/lib.rs:238) is `ISTAT_RAND_RDY | ISTAT_SEED_DONE | ISTAT_AGE_ALARM |
+# ISTAT_RQST_ALARM | ISTAT_LFSR_LOCKUP`: bits 0 to 4, pairwise disjoint. For disjoint x and y,
+# `x | y` and `x ^ y` are the same number, so replacing any one of the four `|` with `^` leaves
+# 0b1_1111 and no test can tell. The unit tests pin the disjointness
+# (every_named_bit_is_the_bit_the_datasheet_names) and the value (ISTAT_ALL == 0b1_1111). The
+# survivors-file used by the weekly gate holds one entry per source line, and four mutants share
+# this line, so the exclusion lives here. If the line moves, the pattern stops matching and the
+# gate fails loudly, which is the safe direction.
+exclude_re = ['^src/lib\.rs:238:\d+: replace \| with \^$']

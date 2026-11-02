@@ -622,22 +622,25 @@ mod tests {
     /// instead of refilling, or a refill that did not reset the cursor, shows up as a repeat.
     #[test]
     fn no_byte_is_served_twice_across_refills() {
-        let mut next = 1u8;
-        let mut generate = || {
-            let block = core::array::from_fn(|i| next.wrapping_add(i as u8));
-            next = next.wrapping_add(32);
-            Some(block)
-        };
-        let mut pool = Pool::new();
-        let mut seen = [0u32; 256];
-        // 40 draws of 8 bytes is 320 bytes, ten generations, so the seam is crossed nine times.
-        for _ in 0..40 {
-            let (got, word) = pool.take(8, &mut generate);
-            assert_eq!(got, 8);
-            for b in word.to_le_bytes() {
-                seen[b as usize] += 1;
+        let seen = within_a_deadline(|| {
+            let mut next = 1u8;
+            let mut generate = || {
+                let block = core::array::from_fn(|i| next.wrapping_add(i as u8));
+                next = next.wrapping_add(32);
+                Some(block)
+            };
+            let mut pool = Pool::new();
+            let mut seen = [0u32; 256];
+            // 40 draws of 8 bytes is 320 bytes, ten generations, so the seam is crossed nine times.
+            for _ in 0..40 {
+                let (got, word) = pool.take(8, &mut generate);
+                assert_eq!(got, 8);
+                for b in word.to_le_bytes() {
+                    seen[b as usize] += 1;
+                }
             }
-        }
+            seen
+        });
         // The generator's byte stream is 1, 2, 3, ... wrapping, so 320 bytes visits every value
         // once or twice and never three times; a repeat from the pool would push one to three.
         for (value, &count) in seen.iter().enumerate() {
@@ -649,20 +652,22 @@ mod tests {
     /// invisible: the last four of one block and the first four of the next.
     #[test]
     fn a_request_straddles_the_seam_without_losing_bytes() {
-        let mut which = 0u8;
-        let mut generate = || {
-            which += 1;
-            Some([which; 32])
-        };
-        let mut pool = Pool::new();
-        // Five-byte draws: the seventh starts at byte 30 of a 32-byte block, so it takes two
-        // bytes from block 1 and three from block 2.
-        for _ in 0..6 {
-            assert_eq!(pool.take(5, &mut generate).0, 5);
-        }
-        let (got, word) = pool.take(5, &mut generate);
-        assert_eq!(got, 5);
-        assert_eq!(word.to_le_bytes()[..5], [1, 1, 2, 2, 2]);
+        within_a_deadline(|| {
+            let mut which = 0u8;
+            let mut generate = || {
+                which += 1;
+                Some([which; 32])
+            };
+            let mut pool = Pool::new();
+            // Five-byte draws: the seventh starts at byte 30 of a 32-byte block, so it takes two
+            // bytes from block 1 and three from block 2.
+            for _ in 0..6 {
+                assert_eq!(pool.take(5, &mut generate).0, 5);
+            }
+            let (got, word) = pool.take(5, &mut generate);
+            assert_eq!(got, 5);
+            assert_eq!(word.to_le_bytes()[..5], [1, 1, 2, 2, 2]);
+        });
     }
 
     /// **A device that stops answering produces a short count, not zeros.** The distinction is the
@@ -670,42 +675,48 @@ mod tests {
     /// be told four, or it will treat four zeros as entropy.
     #[test]
     fn a_dry_device_shortens_the_count_rather_than_padding() {
-        let mut answers = 1;
-        let mut generate = || {
-            if answers > 0 {
-                answers -= 1;
-                Some([0xff; 32])
-            } else {
-                None
-            }
-        };
-        let mut pool = Pool::new();
-        assert_eq!(pool.take(8, &mut generate).0, 8);
-        // Drain the one block this generator will ever give: 32 bytes, so three more eights.
-        for _ in 0..3 {
+        within_a_deadline(|| {
+            let mut answers = 1;
+            let mut generate = || {
+                if answers > 0 {
+                    answers -= 1;
+                    Some([0xff; 32])
+                } else {
+                    None
+                }
+            };
+            let mut pool = Pool::new();
             assert_eq!(pool.take(8, &mut generate).0, 8);
-        }
-        assert_eq!(pool.take(8, &mut generate), (0, 0));
+            // Drain the one block this generator will ever give: 32 bytes, so three more eights.
+            for _ in 0..3 {
+                assert_eq!(pool.take(8, &mut generate).0, 8);
+            }
+            assert_eq!(pool.take(8, &mut generate), (0, 0));
+        });
     }
 
     /// **A served byte is not still sitting in the buffer.** Reading the same region back after a
     /// take must not reproduce it; the pool zeroes behind its cursor.
     #[test]
     fn a_served_byte_is_zeroed_behind_the_cursor() {
-        let mut generate = || Some([0xa5; 32]);
-        let mut pool = Pool::new();
-        assert_eq!(pool.take(8, &mut generate), (8, 0xa5a5_a5a5_a5a5_a5a5));
-        assert_eq!(pool.buf[..8], [0u8; 8]);
-        assert_eq!(pool.remaining(), 24);
+        within_a_deadline(|| {
+            let mut generate = || Some([0xa5; 32]);
+            let mut pool = Pool::new();
+            assert_eq!(pool.take(8, &mut generate), (8, 0xa5a5_a5a5_a5a5_a5a5));
+            assert_eq!(pool.buf[..8], [0u8; 8]);
+            assert_eq!(pool.remaining(), 24);
+        });
     }
 
     /// **A caller asking for more than a word gets a word**, not a shift-left overflow. The wire
     /// format clamps first, so this is defence at the API rather than a live path.
     #[test]
     fn a_request_larger_than_the_word_is_clamped() {
-        let mut generate = || Some([0x11; 32]);
-        let mut pool = Pool::new();
-        assert_eq!(pool.take(64, &mut generate), (8, 0x1111_1111_1111_1111));
+        within_a_deadline(|| {
+            let mut generate = || Some([0x11; 32]);
+            let mut pool = Pool::new();
+            assert_eq!(pool.take(64, &mut generate), (8, 0x1111_1111_1111_1111));
+        });
     }
 
     /// **Every named bit is the bit its own documentation says it is, and no two bits in a
@@ -822,20 +833,27 @@ mod tests {
         );
     }
 
-    /// The deadline itself. A fresh [`Pool`] per call, because the point is the call and not the
-    /// history; a panic inside is reported by the worker's own default hook.
+    /// A fresh [`Pool`] per call, because the point is the call and not the history.
     fn take_within_a_deadline(
         n: u64,
         mut generate: impl FnMut() -> Option<[u8; 32]> + Send + 'static,
     ) -> (u64, u64) {
+        within_a_deadline(move || Pool::new().take(n, &mut generate))
+    }
+
+    /// The deadline itself: run `body` on a worker and fail if it has not finished in five
+    /// seconds. Every test that calls [`Pool::take`] goes through this, because a `take` that
+    /// stops making progress hangs the whole test binary otherwise, and a mutation sweep then
+    /// reports a timeout instead of a caught mutant. A panic inside `body` is reported by the
+    /// worker's own default hook and surfaces here as a closed channel.
+    fn within_a_deadline<T: Send + 'static>(body: impl FnOnce() -> T + Send + 'static) -> T {
         let (sender, receiver) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
-            let mut pool = Pool::new();
-            let _ = sender.send(pool.take(n, &mut generate));
+            let _ = sender.send(body());
         });
         receiver
             .recv_timeout(std::time::Duration::from_secs(5))
-            .expect("take never returned: its gather loop made no progress")
+            .expect("the body panicked (see above), or take never returned: its gather loop made no progress")
     }
 }
 
