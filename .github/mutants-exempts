@@ -2,3 +2,7 @@
 #   src/lib.rs:4 # swapping the operand order is the same arithmetic
 # A line without a reason is refused, and a line naming a survivor that no longer exists is
 # refused too, so this list can only shrink by a diff that says why.
+
+# Shifting 1 by zero: `1 << 0` and `1 >> 0` are the same value, 1.
+src/lib.rs:188 # IE_RAND_RDY_EN is `1 << 0`; `1 >> 0` is also 1, so the constant is unchanged
+src/lib.rs:208 # ISTAT_RAND_RDY is `1 << 0`; `1 >> 0` is also 1, so the constant is unchanged
