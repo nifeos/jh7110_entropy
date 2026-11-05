@@ -6,8 +6,8 @@
 //! It never dereferences a pointer, so it is host-testable and Kani-reachable; the caller maps the
 //! register window and does the volatile reads. `ISTAT.RAND_RDY` counts only when `STAT.SEEDED` is
 //! set (NetBSD's rule), and `ISTAT.LFSR_LOCKUP`, the one hardware fault signal, is
-//! [`GenerationOutcome::Lockup`]. This copy has not run on the board, and the quality of the
-//! randomness is unmeasured; the README's "On silicon" section says what ran and when.
+//! [`GenerationOutcome::Lockup`]. This exact source tree has not run on the board, and the quality of the
+//! randomness is unmeasured; the README's "Hardware evidence" section says what is established.
 
 //! # Sources
 //!
@@ -199,7 +199,7 @@ pub const IE_LFSR_LOCKUP_EN: u32 = 1 << 4;
 /// **The `IE_*` bits gate the IRQ pin, not [`registers::ISTAT`]**, so a polling driver may leave this
 /// register at zero. \[trm\]'s wording ("interrupt **and/or status** contributions") is not
 /// decisive; a reseed and a generation both showed up by polling `ISTAT`
-/// with `IE` never written, on a `VisionFive 2` (the README's "On silicon" section dates the run). The completion interrupt needs this
+/// with `IE` never written, on a `VisionFive 2` (the README's "Hardware evidence" section says what ran). The completion interrupt needs this
 /// bit plus the contribution bits, at PLIC line 30 (\[binding\]'s `interrupts = <30>`); a polling
 /// driver needs none of them.
 pub const IE_GLBL_EN: u32 = 1 << 31;
