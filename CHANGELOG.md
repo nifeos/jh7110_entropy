@@ -5,8 +5,8 @@ sentence beside it.
 
 ## 0.2.0
 
-- Breaking: every register offset, command value and bit constant is spelled out. The offsets
-  are `CONTROL_REGISTER`, `STATUS_REGISTER`, `MODE_REGISTER`, `STATUS_MODE_REGISTER`,
+- Breaking: the crate now spells out every register offset, command value and bit constant. The
+  offsets are `CONTROL_REGISTER`, `STATUS_REGISTER`, `MODE_REGISTER`, `STATUS_MODE_REGISTER`,
   `INTERRUPT_ENABLE_REGISTER`, `INTERRUPT_STATUS_REGISTER`, `FEATURES_REGISTER`,
   `RANDOM_NUMBER_0_REGISTER` to `RANDOM_NUMBER_7_REGISTER`, `SEED_0_REGISTER`, `SEED_7_REGISTER`,
   `AUTOMATIC_RESEED_REQUESTS_REGISTER`, `AUTOMATIC_RESEED_AGE_REGISTER` and
