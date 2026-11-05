@@ -6,4 +6,4 @@ permissions:
   pull-requests: read
 jobs:
   hold:
-    uses: nifeos/crate-workflows/.github/workflows/hold.yml@55978d1d1424192887fefa5f9d9cdf27a4fb5420
+    uses: nifeos/crate-workflows/.github/workflows/hold.yml@d3892dadf528c2960043850bdf01fa588a56da20

@@ -2,10 +2,10 @@
 
 This is an engineering audit, written by an AI agent that is not a lawyer, and it is not legal
 advice. It records what the crate takes from each source it cites, compared mechanically against
-that source at the cited revision, and what each source's licence header says. A lawyer can check
+that source at the cited revision, and what each source's license header says. A lawyer can check
 every row against the files named here. The audit covers this repository only.
 
-The question, asked 2026-10-31: does the crate break the licence of Linux, or of any other source
+The question, asked 2026-10-31: does the crate break the license of Linux, or of any other source
 it cites? It transcribes register offsets, bit positions, names and device-tree facts from them.
 
 ## Verdict
@@ -21,24 +21,24 @@ name or a stock phrase.
 
 The audit downloaded each source file at the revision the crate cites, into a directory of its
 own, and compared every text file in this repository with each of them. It reduced both sides to
-lower-case word tokens, dropping punctuation, comment markers and whitespace, and normalised
+lower-case word tokens, dropping punctuation, comment markers and whitespace, and normalized
 hexadecimal numbers so that `0x1600_C000` and `0x1600C000` compare equal. The check reports every
 maximal run of identical tokens of length 4 or more. A second pass split identifiers at underscores,
 so that `STARFIVE_CTRL_GENE_RANDNUM` and `CTRL_GENE_RANDNUM` would meet.
 
-## The sources and their licence headers
+## The sources and their license headers
 
 The table reproduces the header lines exactly and nothing else from the files.
 
-| Source | Revision compared | Licence header |
+| Source | Revision compared | License header |
 |---|---|---|
 | Linux `drivers/char/hw_random/jh7110-trng.c` | `torvalds/linux` at `db9deec5a345` (master on 2026-08-24; the file last changed in `cad76142aaa4`) | `// SPDX-License-Identifier: GPL-2.0`, `Copyright (C) 2022 StarFive Technology Co.` |
 | Linux `Documentation/devicetree/bindings/rng/starfive,jh7110-trng.yaml` | same tree (the file last changed in `f1b2fe908467`) | `# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)`, with no copyright line |
 | Linux `arch/riscv/boot/dts/starfive/jh7110.dtsi` | same tree | `// SPDX-License-Identifier: GPL-2.0 OR MIT`, `Copyright (C) 2022 StarFive Technology Co., Ltd.`, `Copyright (C) 2022 Emil Renner Berthing` |
 | Vendor U-Boot `arch/riscv/dts/jh7110.dtsi` | `starfive-tech/u-boot` at `bfbdce9b86a2` | `// SPDX-License-Identifier: GPL-2.0 OR MIT`, `Copyright (C) 2022 StarFive Technology Co., Ltd.`, `Copyright (C) 2022 Hal Feng` |
 | Vendor Linux `drivers/char/hw_random/starfive-trng.c` | `starfive-tech/linux` at `202b558ae34c` | `// SPDX-License-Identifier: GPL-2.0`, `Copyright (C) 2022 StarFive Technology Co.` |
-| NetBSD `sys/arch/riscv/starfive/jh7110_trng.c` | revision 1.2 (`$NetBSD: jh7110_trng.c,v 1.2 2025/02/09 09:09:49 skrll Exp $`) | No SPDX line. `Copyright (c) 2025 The NetBSD Foundation, Inc.`, followed by the NetBSD Foundation's two-clause BSD licence |
-| JH7110 Technical Reference Manual, "TRNG > Control Registers" | the HTML edition at `doc-en.rvspace.org`, which states "Preliminary V2", "2023/4/24", Doc ID `JH7110-TRMEN-001` | No licence. The page footer reads `© 2022 Sponsored by StarFive Technology . All rights reserved.` |
+| NetBSD `sys/arch/riscv/starfive/jh7110_trng.c` | revision 1.2 (`$NetBSD: jh7110_trng.c,v 1.2 2025/02/09 09:09:49 skrll Exp $`) | No SPDX line. `Copyright (c) 2025 The NetBSD Foundation, Inc.`, followed by the NetBSD Foundation's two-clause BSD license |
+| JH7110 Technical Reference Manual, "TRNG > Control Registers" | the HTML edition at `doc-en.rvspace.org`, which states "Preliminary V2", "2023/4/24", Doc ID `JH7110-TRMEN-001` | No license. The page footer reads `© 2022 Sponsored by StarFive Technology . All rights reserved.` |
 
 About the manual, the audit could not establish whether the site has terms of use beyond that
 footer, or whether a PDF edition carries different terms. The crate cites the manual by edition
@@ -80,7 +80,7 @@ Before the fixes, against this repository:
 After the fixes, the 5-token quotation is the longest run with any source, and no run from either
 GPL-2.0 driver exceeds 4 tokens.
 
-## What each licence allows here
+## What each license allows here
 
 - GPL-2.0, both Linux drivers. Nobody could relicense text copied from them as `MIT OR
   Apache-2.0`, and no notice would cure that. The crate holds none. What it takes is offsets, bit
@@ -94,11 +94,11 @@ GPL-2.0 driver exceeds 4 tokens.
 - NetBSD's two-clause BSD. You may reuse the text, keeping the copyright, the two conditions and the
   disclaimer. The crate holds none of its text; it cites the seeded gate and the alarm bit
   positions as facts and describes them in its own words.
-- The manual, all rights reserved. It grants no licence, so nobody may copy its prose beyond
+- The manual, all rights reserved. It grants no license, so nobody may copy its prose beyond
   short quotation. Its register names and values are facts. The crate quotes 5 words of it, in
   quotation marks, with the source named.
 
-The crate needs no `NOTICE` file and no third-party licence text.
+The crate needs no `NOTICE` file and no third-party license text.
 
 ## Identifiers that match a source name
 
