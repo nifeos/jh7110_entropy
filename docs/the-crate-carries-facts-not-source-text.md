@@ -52,13 +52,13 @@ identical run longer than a few tokens).
 
 | Place | What it holds | Drawn from | Class |
 |---|---|---|---|
-| `src/lib.rs`, `registers` | 20 byte offsets, `CTRL` to `BUILD_CONFIGURATION` | driver, manual, NetBSD | fact |
-| `src/lib.rs`, bit constants | command values 0 to 3 and every `MODE`, `SMODE`, `STAT`, `IE` and `ISTAT` bit | driver, manual, NetBSD | fact |
+| `src/lib.rs`, `registers` | 20 byte offsets, `CONTROL_REGISTER` to `BUILD_CONFIGURATION_REGISTER` | driver, manual, NetBSD | fact |
+| `src/lib.rs`, bit constants | command values 0 to 3 and every `MODE`, `SMODE`, `STAT`, `IE` and `ISTAT` bit (the manual's register names; the constants spell them out) | driver, manual, NetBSD | fact |
 | `src/lib.rs`, `COMPATIBLE_MAINLINE`, `COMPATIBLE_VENDOR` | `starfive,jh7110-trng`, `starfive,trng` | binding, vendor tree | fact |
 | `src/lib.rs`, register and bit doc comments | write-1-to-clear, zero disables the auto alarms, the seeded gate, the drivers' bring-up order | manual, driver, NetBSD | own words |
 | `src/lib.rs`, `COMPATIBLE_VENDOR` doc | the vendor node, once as one line of device-tree source | vendor tree | was verbatim, 11 tokens; now own words |
-| `src/lib.rs`, five register doc comments | `SEED0`, `AUTO_RQSTS`, `SMODE_MISSION_MODE`, `FEATURES`, `BUILD_CONFIGURATION` | manual | were near-verbatim, 4 to 8 tokens; now own words |
-| `src/lib.rs`, `IE_GLBL_EN` doc | the manual's phrase "interrupt and/or status contributions", in quotation marks | manual | a 5-token quotation, kept because the comment argues about that wording |
+| `src/lib.rs`, five register doc comments | `SEED_0_REGISTER`, `AUTOMATIC_RESEED_REQUESTS_REGISTER`, `STATUS_MODE_MISSION_MODE`, `FEATURES_REGISTER`, `BUILD_CONFIGURATION_REGISTER` | manual | were near-verbatim, 4 to 8 tokens; now own words |
+| `src/lib.rs`, `INTERRUPT_ENABLE_GLOBAL` doc | the manual's phrase "interrupt and/or status contributions", in quotation marks | manual | a 5-token quotation, kept because the comment argues about that wording |
 | `src/lib.rs`, `GenerationOutcome::Unseeded` doc | the label of `STAT.LAST_RESEED` value `0x7`, in quotation marks | manual | fact (a value's name) |
 | `src/lib.rs`, unit tests | the bit table, the two strings, interrupt 30 as four bytes | as above | fact |
 | `src/verification.rs`, `falsifications/` | proofs and the patches that break them | none | own words |
@@ -107,7 +107,9 @@ Four are command values: `CTRL_EXEC_NOP`, `CTRL_GENE_RANDNUM`, `CTRL_EXEC_RANDRE
 `CTRL_EXEC_NONCE_RESEED`. They are Linux's names without their `STARFIVE_` prefix. The manual
 describes the four values in words and names none of them. The fifth is `STAT_RAND_SEEDING`, where
 the manual calls bit 31 `RAND_RESEEDING`. The crate now
-names them `CTRL_COMMAND_NONE`, `CTRL_COMMAND_GENERATE`, `CTRL_COMMAND_RESEED`,
-`CTRL_COMMAND_NONCE_RESEED` and `STAT_RESEEDING`. Each old spelling stays in a doc comment and in a
-`#[doc(alias)]`, so a search for it still lands on the constant. The other constant names are the
-manual's own register and field names (`CTRL`, `ISTAT`, `RAND_RDY`, `GLBL_EN` and the rest).
+names them `CONTROL_COMMAND_NONE`, `CONTROL_COMMAND_GENERATE`, `CONTROL_COMMAND_RESEED`,
+`CONTROL_COMMAND_NONCE_RESEED` and `STATUS_RESEEDING`. Each old spelling stays in a doc comment and in a
+`#[doc(alias)]`, so a search for it still lands on the constant. Every other constant spells out the manual's register or
+field name (`CTRL` is `CONTROL_REGISTER`, `ISTAT` is `INTERRUPT_STATUS_REGISTER`, `RAND_RDY` is
+`INTERRUPT_STATUS_RANDOM_NUMBER_READY` and so on), and the manual's own spelling stays as a
+`#[doc(alias)]` on each.
