@@ -709,7 +709,7 @@ mod tests {
     }
 
     /// **A caller asking for more than a word gets a word**, not a shift-left overflow. The wire
-    /// format clamps first, so this is defence at the API rather than a live path.
+    /// format clamps first, so this is defense at the API rather than a live path.
     #[test]
     fn a_request_larger_than_the_word_is_clamped() {
         within_a_deadline(|| {
