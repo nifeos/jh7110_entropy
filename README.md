@@ -86,15 +86,15 @@ does no locking of its own.
 ## Hardware evidence
 
 A driver built on this logic has produced real TRNG output on a VisionFive 2 with the chip in
-256-bit mode, so all eight `RAND` words are the answer. The clock and reset must be ungated and
-released first, as the first item under BUGS says.
+256-bit mode, so all eight `RAND` words are the answer. Ungate the clock and release the reset
+first, as the first item under BUGS says.
 
 Not established:
 
 - The quality of the randomness. A TRNG has no known answer. There is no health test and no
-  NIST Special Publication 800-90B-class measurement, and whether this crate should carry a health test is undecided.
+  NIST Special Publication 800-90B-class measurement, and the maintainers have not decided whether this crate should carry a health test.
 - A run of this exact source tree on hardware. An earlier version of the code, under a different
-  crate name, is the one that ran. Until a hardware run of this tree is recorded, treat its
+  crate name, is the one that ran. Until someone runs this tree on hardware and records the result, treat its
   behavior on the board as unconfirmed.
 
 ## BUGS
