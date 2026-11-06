@@ -58,26 +58,26 @@ its `reg`, decode `interrupts` with `interrupt_line` and `status` with `is_statu
 result in a `Discovered`. A disabled node is the first suspect when the window reads all zeros. The crate has no helper that
 walks a tree for you; it decodes the properties and you do the walking with your own parser.
 
-## Examples
+## EXAMPLES
 
 ```rust
-use jh7110_entropy::{GenerationOutcome, generation_outcome, is_status_okay, ISTAT_RAND_RDY, STAT_SEEDED};
+use jh7110_entropy::{GenerationOutcome, generation_outcome, is_status_okay, INTERRUPT_STATUS_RANDOM_NUMBER_READY, STATUS_SEEDED};
 
 // Firmware that says nothing about `status` means "okay".
 assert!(is_status_okay(None));
 assert!(!is_status_okay(Some(b"disabled\0")));
 
 // A seeded core with RAND_RDY set: the eight words, little-endian, word 0 first.
-let rand = [0x0403_0201, 0, 0, 0, 0, 0, 0, 0];
-match generation_outcome(STAT_SEEDED, ISTAT_RAND_RDY, rand) {
+let random_numbers = [0x0403_0201, 0, 0, 0, 0, 0, 0, 0];
+match generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
     GenerationOutcome::Ready(bytes) => assert_eq!(&bytes[..4], &[1, 2, 3, 4]),
     other => panic!("expected Ready, got {other:?}"),
 }
 ```
 
-A driver writes `MODE_R256` during bring-up (otherwise only four words carry the answer), clears
-`ISTAT` with `ISTAT_ALL`, asks for a reseed with `CTRL_COMMAND_RESEED`, then for each request
-writes `CTRL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
+A driver writes `MODE_256_BIT_OUTPUT` during bring-up (otherwise only four words carry the answer), clears
+`ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
+writes `CONTROL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
 `Unseeded` it reseeds and retries, bounded. The crate sets no bound, no poll interval and no
 timeout: you pick them, ideally from a measurement on your board. This
 README gives no timing figure. Wrap `Pool` and the register access in one lock; `Pool`
