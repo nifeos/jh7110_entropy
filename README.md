@@ -28,7 +28,7 @@ Four Kani harnesses exhaust `generation_outcome`, the function that turns one sn
 register (`STAT`) and the interrupt status register (`ISTAT`), plus the eight random-output words
 (`RAND`), into an answer:
 
-- `verification::a_lockup_bit_is_never_overridden`: whenever `ISTAT.LFSR_LOCKUP` (a lockup of the linear-feedback shift register, LFSR, that feeds the
+- `verification::a_lockup_bit_is_never_overridden`: whenever `ISTAT.LFSR_LOCKUP` (a lockup of the linear-feedback shift register (LFSR) that feeds the
   generator) reads 1, the answer
   is `Lockup`, whatever else the register says.
 - `verification::ready_requires_rand_rdy_and_carries_the_words_untouched`: `Ready` comes only from
@@ -92,7 +92,7 @@ first, as the first item under BUGS says.
 Not established:
 
 - The quality of the randomness. A TRNG has no known answer. There is no health test and no
-  NIST Special Publication 800-90B-class measurement, and the maintainers have not decided whether this crate should carry a health test.
+  National Institute of Standards and Technology (NIST) Special Publication 800-90B-class measurement, and the maintainers have not decided whether this crate should carry a health test.
 - A run of this exact source tree on hardware. An earlier version of the code, under a different
   crate name, is the one that ran. Until someone runs this tree on hardware and records the result, treat its
   behavior on the board as unconfirmed.

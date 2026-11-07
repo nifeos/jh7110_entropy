@@ -84,7 +84,7 @@ pub mod registers {
     #[doc(alias = "SMODE")]
     pub const STATUS_MODE_REGISTER: u64 = 0x0C;
     /// Interrupt enable: the four `super::INTERRUPT_ENABLE_*` contribution bits plus [`super::INTERRUPT_ENABLE_GLOBAL`].
-    /// **Enabling a contribution here is about the IRQ pin, not about whether [`INTERRUPT_STATUS_REGISTER`] latches**;
+    /// **Enabling a contribution here is about the interrupt request (IRQ) pin, not about whether [`INTERRUPT_STATUS_REGISTER`] latches**;
     /// see [`super::INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`].
     #[doc(alias = "JH7110_TRNG_IENABLE")]
     #[doc(alias = "IE")]
@@ -161,7 +161,7 @@ pub mod registers {
     pub const BUILD_CONFIGURATION_REGISTER: u64 = 0x68;
 }
 
-/// `CTRL`: execute a NOP (`EXEC_NOP` in the vendor driver). \[trm\] lists it as one of the command
+/// `CTRL`: execute a no-operation (NOP) command (`EXEC_NOP` in the vendor driver). \[trm\] lists it as one of the command
 /// encodings; the vendor driver issues it once between programming the mode registers and asking
 /// for a reseed. Named for completeness rather than used, since \[driver\] and \[netbsd\] both
 /// skip it.
@@ -250,7 +250,7 @@ pub const INTERRUPT_ENABLE_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP: u32 = 1 << 4;
 /// register at zero. \[trm\]'s wording ("interrupt **and/or status** contributions") is not
 /// decisive; a reseed and a generation both showed up by polling `ISTAT`
 /// with `IE` never written, on a `VisionFive 2` (the README's "Hardware evidence" section says what ran). The completion interrupt needs this
-/// bit plus the contribution bits, at PLIC line 30 (\[binding\]'s `interrupts = <30>`); a polling
+/// bit plus the contribution bits, at Platform-Level Interrupt Controller (PLIC) line 30 (\[binding\]'s `interrupts = <30>`); a polling
 /// driver needs none of them.
 #[doc(alias = "GLBL_EN")]
 pub const INTERRUPT_ENABLE_GLOBAL: u32 = 1 << 31;
@@ -295,7 +295,7 @@ pub const INTERRUPT_STATUS_DOCUMENTED_BITS_MASK: u32 = INTERRUPT_STATUS_RANDOM_N
     | INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP;
 
 /// The device tree `compatible` string \[binding\] defines. `starfive,jh8100-trng` also lists this
-/// as a fallback compatible (the JH8100 reuses the same TRNG IP), which is out of scope: this
+/// as a fallback compatible (the JH8100 reuses the same TRNG intellectual property (IP) block), which is out of scope: this
 /// crate names the JH7110's own string only, never the fallback, so it says nothing about a `SoC`
 /// it has no board for.
 pub const COMPATIBLE_MAINLINE: &[u8] = b"starfive,jh7110-trng";
@@ -363,7 +363,7 @@ pub fn interrupt_line(value: &[u8]) -> Option<u32> {
 /// `"fail"`, `"fail-sss"` and every other value. `"ok"` is a legacy spelling of `"okay"` that trees
 /// in the wild still carry, so it is accepted rather than read as a fourth kind of "no".
 ///
-/// The value is a NUL-terminated string in the tree, so both the terminated and the unterminated
+/// The value is a null (NUL) terminated string in the tree, so both the terminated and the unterminated
 /// forms are matched rather than trimmed: a four-way `matches!` says exactly which byte strings
 /// count, where a trim would have to decide what an empty or multi-string value means.
 pub fn is_status_okay(value: Option<&[u8]>) -> bool {
@@ -388,7 +388,7 @@ pub enum GenerationOutcome {
     /// "too long" is is a fact about the real device's timing this crate cannot know without it).
     NotReady,
     /// **`STAT.SEEDED` was clear**, so whatever the `RAND` words hold did not come from a seeded
-    /// PRNG core and must not be served as randomness.
+    /// pseudo-random number generator (PRNG) core and must not be served as randomness.
     ///
     /// This is \[netbsd\]'s gate: its poll path looks at `RAND_RDY` only when [`STATUS_SEEDED`] is
     /// set, reseeding otherwise. \[trm\]'s `STAT.LAST_RESEED` value `0x7`, "Unseeded (zeroized
