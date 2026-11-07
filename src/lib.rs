@@ -274,7 +274,7 @@ pub(crate) const INTERRUPT_STATUS_AGE_ALARM: u32 = 1 << 2;
 pub(crate) const INTERRUPT_STATUS_REQUEST_ALARM: u32 = 1 << 3;
 /// `ISTAT` bit 4: the hardware's own fault signal, an SEU (single-event upset) in the LFSR-based
 /// post-processing stage. The Linux driver treats this as "reseed and try again", never as "trust
-/// the RAND registers anyway"; [`generation_outcome`] gives it priority over `RAND_RDY` in the same
+/// the `RAND` registers anyway"; [`generation_outcome`] gives it priority over `RAND_RDY` in the same
 /// snapshot for the same reason (a register file that says both "ready" and "faulted" at once
 /// must not be read as an answer). This is the one hardware self-check the datasheet documents. It
 /// is not a statistical health test over the bitstream, which the datasheet does not claim either.
@@ -295,7 +295,7 @@ pub const INTERRUPT_STATUS_DOCUMENTED_BITS_MASK: u32 = INTERRUPT_STATUS_RANDOM_N
     | INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP;
 
 /// The device tree `compatible` string \[binding\] defines. `starfive,jh8100-trng` also lists this
-/// as a fallback compatible (the JH8100 reuses the same TRNG intellectual property (IP) block), which is out of scope: this
+/// as a fallback compatible (the `JH8100` reuses the same TRNG intellectual property (IP) block), which is out of scope: this
 /// crate names the JH7110's own string only, never the fallback, so it says nothing about a `SoC`
 /// it has no board for.
 pub const COMPATIBLE_MAINLINE: &[u8] = b"starfive,jh7110-trng";
