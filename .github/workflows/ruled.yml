@@ -10,4 +10,4 @@ jobs:
     permissions:
       pull-requests: write
       actions: write
-    uses: nifeos/crate-workflows/.github/workflows/ruled.yml@d3892dadf528c2960043850bdf01fa588a56da20
+    uses: nifeos/crate-workflows/.github/workflows/ruled.yml@7f3d18814b605eac7c2dcf6d161e7a9516cf77d0

@@ -41,7 +41,7 @@ The table reproduces the header lines exactly and nothing else from the files.
 | JH7110 Technical Reference Manual, "TRNG > Control Registers" | the HTML edition at `doc-en.rvspace.org`, which states "Preliminary V2", "2023/4/24", Doc ID `JH7110-TRMEN-001` | No license. The page footer reads `© 2022 Sponsored by StarFive Technology . All rights reserved.` |
 
 About the manual, the audit could not establish whether the site has terms of use beyond that
-footer, or whether a PDF edition carries different terms. The crate cites the manual by edition
+footer, or whether a Portable Document Format (PDF) edition carries different terms. The crate cites the manual by edition
 and section title, which matches the HTML edition compared here.
 
 ## Inventory
