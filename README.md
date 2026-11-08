@@ -1,5 +1,10 @@
 # jh7110_entropy
 
+[![check](https://github.com/nifeos/jh7110_entropy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nifeos/jh7110_entropy/actions/workflows/ci.yml?query=branch%3Amain)
+[![proofs](https://github.com/nifeos/jh7110_entropy/actions/workflows/proofs.yml/badge.svg?branch=main)](https://github.com/nifeos/jh7110_entropy/actions/workflows/proofs.yml?query=branch%3Amain)
+[![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/nifeos/jh7110_entropy#license)
+[![minimum Rust version](https://img.shields.io/badge/rust-1.88%2B-blue.svg)](https://github.com/nifeos/jh7110_entropy/blob/main/Cargo.toml)
+
 The logic of a driver for the true random number generator (TRNG) in the StarFive JH7110, the
 RISC-V system-on-chip of the VisionFive 2. It holds the register layout and the decision of whether a
 generation succeeded, failed or is still running. It also holds a small pool that serves the 32
