@@ -25,7 +25,8 @@ usual way to get one) and a git checkout. From the crate root:
 - The proofs need Kani, which `rustup` does not install. Run `cargo install --locked
   kani-verifier --version 0.68.0`, then `cargo kani setup`. The setup step downloads a model
   checker, so it needs network access. CI uses version 0.68.0, and another version may verify
-  differently. After that, `cargo kani` runs all four harnesses.
+  differently. After that, `cargo kani` runs all four harnesses, which takes about 15 seconds on a laptop-class
+  machine. To run one, add `--harness <name>`.
 
 ## What is proven
 
