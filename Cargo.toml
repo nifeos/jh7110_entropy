@@ -2,14 +2,31 @@
 name = "jh7110_entropy"
 version = "0.2.0"
 edition = "2024"
+# The source needs 1.85 for edition 2024, and builds and tests there. 1.88 is the oldest
+# toolchain this repository promises to keep working; lowering it later is a compatible change,
+# raising it is not.
 rust-version = "1.88"
 description = "StarFive JH7110 true random number generator logic: registers, the success decision and both device trees' bindings, proven with Kani"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/nifeos/jh7110_entropy"
-keywords = ["no-std", "kani", "driver"]
-categories = ["no-std", "embedded", "hardware-support"]
-publish = false     # the soak publishes nothing; release step 7 removes this line
+documentation = "https://docs.rs/jh7110_entropy"
+keywords = ["jh7110", "trng", "starfive", "no-std", "random"]
+categories = ["no-std", "no-std::no-alloc", "embedded", "hardware-support"]
+# A user of the crate needs the source, the falsification patches its proofs cite, and the
+# documents the README links; the repository's own CI and plumbing stay out of the package.
+include = [
+    "/src/",
+    "/falsifications/",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE-MIT",
+    "/LICENSE-APACHE",
+    "/docs/the-crate-carries-facts-not-source-text.md",
+]
+# Nothing is published yet. This line comes out in the pull request that releases the first
+# version to crates.io.
+publish = false
 
 # no_std for a driver, std for host tests. This crate owns the register offsets, the bit decode
 # and what each of the JH7110's two device trees calls the block. No unsafe code and no raw pointer

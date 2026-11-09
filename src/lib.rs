@@ -1,7 +1,7 @@
 #![cfg_attr(not(test), no_std)]
-//! The `StarFive` JH7110 TRNG, as pure logic: the register layout, what each of the chip's two
-//! device trees calls the block, and the decision of whether a generation succeeded, failed or is
-//! running.
+//! The `StarFive` JH7110 true random number generator (TRNG), as pure logic: the register layout,
+//! what each of the chip's two device trees calls the block, and the decision of whether a
+//! generation succeeded, failed or is running.
 //!
 //! It never dereferences a pointer, so it is host-testable and Kani-reachable; the caller maps the
 //! register window and does the volatile reads. `ISTAT.RAND_RDY` counts only when `STAT.SEEDED` is
