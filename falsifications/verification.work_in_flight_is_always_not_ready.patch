@@ -1,0 +1,19 @@
+Falsifies `jh7110_entropy::verification::work_in_flight_is_always_not_ready`.
+
+The defect: `generation_outcome` holds off only while a generation is in flight and forgets the
+reseed, so a `RAND_RDY` latched from the last generation is served while `STAT.RAND_RESEEDING`
+says the core is being reseeded underneath it.
+
+Expected to fail: the harness's `assert_eq!(generation_outcome(status, interrupt_status, random_numbers), GenerationOutcome::NotReady)`:
+a seeded core in 256-bit mode with `RAND_RESEEDING` set and `RAND_RDY` latched returns `Ready`.
+
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -449,5 +449,5 @@ pub fn generation_outcome(
+     if interrupt_status & INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP != 0 {
+         GenerationOutcome::Lockup
+-    } else if status & STATUS_GENERATING != 0 || status & STATUS_RESEEDING != 0 {
++    } else if status & STATUS_GENERATING != 0 {
+         GenerationOutcome::NotReady
+     } else if status & STATUS_SEEDED == 0 {

@@ -8,11 +8,12 @@ Expected to fail: the harness's `assert_eq!(generation_outcome(status, interrupt
 produces `Ready`.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 3e18770..7e12e70 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -415,3 +415,3 @@ pub fn generation_outcome(
-         GenerationOutcome::Unseeded
+@@ -455,5 +455,5 @@ pub fn generation_outcome(
+     } else if status & STATUS_256_BIT_OUTPUT == 0 {
+         GenerationOutcome::WrongOutputWidth
 -    } else if interrupt_status & INTERRUPT_STATUS_RANDOM_NUMBER_READY != 0 {
 +    } else if interrupt_status & (INTERRUPT_STATUS_RANDOM_NUMBER_READY | INTERRUPT_STATUS_SEED_DONE) != 0 {
          GenerationOutcome::Ready(output_bytes(random_numbers))
+     } else {

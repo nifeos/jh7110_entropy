@@ -8,11 +8,12 @@ Expected to fail: the harness's `assert_eq!(generation_outcome(status, interrupt
 the core seeded) `generation_outcome` returns `Ready`.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 3e18770..456a09c 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -411,3 +411,3 @@ pub fn generation_outcome(
+@@ -447,5 +447,5 @@ pub fn generation_outcome(
+     random_numbers: [u32; 8],
  ) -> GenerationOutcome {
 -    if interrupt_status & INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP != 0 {
 +    if interrupt_status & INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP != 0 && interrupt_status & INTERRUPT_STATUS_RANDOM_NUMBER_READY == 0 {
          GenerationOutcome::Lockup
+     } else if status & STATUS_GENERATING != 0 || status & STATUS_RESEEDING != 0 {
