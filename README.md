@@ -117,17 +117,70 @@ walks a tree for you; it decodes the properties and you do the walking with your
 
 ## Hardware evidence
 
-A driver built on this logic has produced real TRNG output on a VisionFive 2 with the chip in
-256-bit mode, so all eight `RAND` words are the answer. Ungate the clock and release the reset
-first, as the first item under BUGS says.
+Run on 2026-11-09 (UTC), on one VisionFive 2, against commit `ee0bde8feb9f78a67da011c928f9a2a697f3bbc1`
+of this repository. A small bare-metal RISC-V payload built on that commit's constants and its
+`generation_outcome` performed the register sequences below and printed one checksummed line per
+result; a script judged the log. The payload was loaded over the network, and the person running it
+powered the board on from off. The payload's SHA-256 is
+`e421000bc0b66d35ac60315cbe618ba1c8e15fb46d9bf8aac44f3a27b82054e8`; the console log's is
+`540996ad74682bd9fbe350e897028af2310113a9d210df37590847b40a2c960e` and the 1,310,720-byte capture's
+is `97fc5325be5ca81d31cfb85b73aaea73191efc474d24d25a0af82f0817079263`. The log holds two boots (the
+first fell back to the card's own kernel); the judged run is the second. The checker printed
+`PASS, 0 problem(s)`.
+
+What passed, with the board as the judge:
+
+- The window is at `0x1600c000`, and the device tree named it with the `starfive,trng` compatible.
+  With the clocks enabled and the reset released, a reseed completed by polling and left
+  `STAT.SEEDED` set.
+- Two generations by polling both answered `ready`, with 32 bytes that were not all zero and
+  differed from each other.
+- `STAT.R256` read 1 after `MODE_256_BIT_OUTPUT` was written. `FEATURES` bits 1:0 and `BCONF` bit 2
+  both said the block was built for 256-bit output.
+- No poll timed out in 1,048,576 generations on the driver path. All
+  1,048,576 answered `ready`, none was all zero, none came back unseeded or at the wrong width.
+- After the bring-up's clear of `ISTAT`, no documented bit was left. Setting `AUTO_RQSTS` or
+  `AUTO_AGE` latched `ISTAT` bit 3 or bit 2 as documented, and the residue after clearing held no
+  documented bit.
+
+What the board answered, recorded and not judged:
+
+- Reset state. The first read of `STAT` showed `SEEDED` = 1 and `LAST_RESEED` = 4, before the
+  payload wrote anything to the block. That is the state as it stood after the bootloader, and it is
+  not shown to be the silicon's reset state. `LAST_RESEED` read 0 after the payload's first reseed;
+  the values 0 and 4 were the only ones seen in the run.
+- Width. `STAT.R256` read 1 and `MODE` read `0x00000008` before the payload wrote `MODE`;
+  `FEATURES` read `0x0000000d` and `BCONF` read `0x0000003d`. Read against that reset width, `BCONF`
+  bit 3 set means 256-bit. That reading holds only if nothing wrote `MODE` between reset and the
+  payload, which the run cannot show.
+- `STAT` bits 19 to 23 were never set in any read. A board cannot show where `LAST_RESEED` ends;
+  it shows only that the next five bits stayed clear. No bit outside the crate's named fields was
+  ever set.
+- `RAND_RDY` beside `RAND_GENERATING`. Counts are of snapshots (`STAT`, `ISTAT`, `STAT`) with
+  `RAND_RDY` showing. With `RAND_RDY` acknowledged first, 1 of 9,999 snapshots showed
+  `RAND_GENERATING` in either `STAT` read and none showed it in both. With a second `GENERATE`
+  written over a latched `RAND_RDY`, 8,775 snapshots showed it in both reads and 9,000 in at least
+  one, over 1,000 trials; the block accepted all 1,000 commands and changed the `RAND` words each
+  time. So the two bits do appear together when a command lands on a latched `RAND_RDY`.
+- Timing, at the 4 MHz time CSR: a generation took a median of 24 ticks (6.0 microseconds, maximum
+  6.25) and a reseed a median of 174 ticks (43.5 microseconds, maximum 50.75). One read of the time
+  CSR costs at least one tick, and every figure includes it.
+- `LFSR_LOCKUP` never set in 1,048,576 generations, so the run could not test whether a reseed
+  clears it. That stays open.
+
+Statistics, on one 1,310,720-byte capture (40,960 generations, every record verified): 2 of 524
+FIPS 140-2 blocks failed (a good source fails about one in 1,250, and the check's bar was at most 3); Shannon entropy 7.999854 bits per byte; chi-square over
+byte values 264.17 (upper-tail p 0.3333); mean byte 127.5159; lag-1 serial correlation -0.000949; no
+repeated 32-byte generation. No outside statistical suite was run. One capture showing no gross
+defect says nothing about unpredictability: a good-looking stream from one boot is what a weak
+source also produces, and a health test and a measurement in the manner of NIST SP 800-90B are still absent.
 
 Not established:
 
-- The quality of the randomness. A TRNG has no known answer. There is no health test and no
-  National Institute of Standards and Technology (NIST) Special Publication 800-90B-class measurement, and the maintainers have not decided whether this crate should carry a health test.
-- A run of this exact source tree on hardware. An earlier version of the code, under a different
-  crate name, is the one that ran. Until someone runs this tree on hardware and records the result, treat its
-  behavior on the board as unconfirmed.
+- The quality of the randomness, as above. There is no health test, and the maintainers have not
+  decided whether this crate should carry one.
+- Any other board, any other firmware, or a reset taken from anything but the one power-on above.
+- The behavior of any commit other than `ee0bde8`. A later commit that changes `src/` has not run.
 
 ## BUGS
 

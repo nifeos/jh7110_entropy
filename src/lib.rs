@@ -6,8 +6,8 @@
 //! It never dereferences a pointer, so it is host-testable and Kani-reachable; the caller maps the
 //! register window and does the volatile reads. `ISTAT.RAND_RDY` counts only when `STAT.SEEDED` is
 //! set (NetBSD's rule), and `ISTAT.LFSR_LOCKUP`, the one hardware fault signal, is
-//! [`GenerationOutcome::Lockup`]. This exact source tree has not run on the board, and the quality of the
-//! randomness is unmeasured; the README's "Hardware evidence" section says what is established.
+//! [`GenerationOutcome::Lockup`]. The README's "Hardware evidence" section says which commit ran on a
+//! board and what it established; the quality of the randomness is unmeasured.
 
 //! # Sources
 //!
