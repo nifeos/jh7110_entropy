@@ -83,7 +83,10 @@ match generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_RANDOM_NUMBER_READY, ra
 
 A driver writes `MODE_256_BIT_OUTPUT` during bring-up (otherwise only four words carry the answer), clears
 `ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
-writes `CONTROL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
+writes `CONTROL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. Once the
+outcome is `Ready` and the eight words are read, the driver acknowledges the request by writing
+`INTERRUPT_STATUS_RANDOM_NUMBER_READY` (`RAND_RDY`) to `INTERRUPT_STATUS_REGISTER`; the bit is write-1-to-clear, so
+without that write it stays latched and the next request sees it on its first poll. On `Lockup` or
 `Unseeded` it reseeds and retries, bounded. The crate sets no bound, no poll interval and no
 timeout: you pick them, ideally from a measurement on your board. This
 README gives no timing figure. Wrap `Pool` and the register access in one lock; `Pool`
