@@ -1,7 +1,25 @@
 # Changelog
 
-Dates are UTC. One line per release, what changed and why, so a reader of the diff has the
+One section per release, newest first: what changed and why, so a reader of the diff has the
 sentence beside it.
+
+## Unreleased
+
+- Breaking: `GenerationOutcome` has a fourth refusing variant, `WrongOutputWidth`, which
+  `generation_outcome` answers when `STAT.R256` (`STATUS_256_BIT_OUTPUT`) is clear. In 128-bit mode
+  only four of the eight `RAND` words carry the answer, and the decode used to serve all eight.
+- `generation_outcome` answers `NotReady` while `STAT` reports a generation (`STATUS_GENERATING`) or a
+  reseed (`STATUS_RESEEDING`) in flight, because the `RAND` words may be mid-rewrite and the other
+  refusals would tell a caller to issue a command while one runs.
+- Breaking: `Pool` is no longer `Clone` or `Copy`, since a copy serves the same bytes twice. Its
+  `Debug` prints `remaining_bytes` and never the buffer. Dropping it zeroes the buffer, and
+  `refill` zeroes the bytes it discards.
+- Breaking: `Pool::remaining` is `Pool::remaining_bytes`, `Pool::take`'s parameter is
+  `byte_count`, and `take` answers a `TakenBytes { byte_count, word }` in place of a `(u64, u64)`
+  whose order a caller had to remember.
+- Kani proves the two new decode rules and `Pool::take`: the count it serves, the order of the
+  bytes across a refill, the zeroing behind the cursor, and the short count from a generator that
+  refuses. Each new harness carries a falsification patch.
 
 ## 0.2.0
 
@@ -24,7 +42,7 @@ sentence beside it.
 
 - The documentation no longer refers to any consumer of the crate.
 
-## Unreleased
+## 0.1.0
 
 - First version.
 - Doc comments state the vendor tree's true random number generator (TRNG) node and five manual register descriptions in the

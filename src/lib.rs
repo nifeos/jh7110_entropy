@@ -36,14 +36,17 @@
 //! # Examples
 //!
 //! ```
-//! use jh7110_entropy::{GenerationOutcome, generation_outcome, INTERRUPT_STATUS_RANDOM_NUMBER_READY, INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP, STATUS_SEEDED};
+//! use jh7110_entropy::{GenerationOutcome, generation_outcome, INTERRUPT_STATUS_RANDOM_NUMBER_READY, INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP, STATUS_256_BIT_OUTPUT, STATUS_GENERATING, STATUS_SEEDED};
+//!
+//! // A seeded core in 256-bit mode, the state a bring-up leaves it in.
+//! let idle = STATUS_SEEDED | STATUS_256_BIT_OUTPUT;
 //!
 //! // Seeded, but the generation has not finished.
-//! assert_eq!(generation_outcome(STATUS_SEEDED, 0, [0; 8]), GenerationOutcome::NotReady);
+//! assert_eq!(generation_outcome(idle, 0, [0; 8]), GenerationOutcome::NotReady);
 //!
 //! // The eight output words assemble little-endian, word 0 first.
 //! let random_numbers = [0x0403_0201, 0x0807_0605, 0, 0, 0, 0, 0, 0];
-//! match generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
+//! match generation_outcome(idle, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
 //!     GenerationOutcome::Ready(bytes) => assert_eq!(&bytes[..8], &[1, 2, 3, 4, 5, 6, 7, 8]),
 //!     other => panic!("expected Ready, got {other:?}"),
 //! }
@@ -51,7 +54,15 @@
 //! // A latched RAND_RDY on a core never seeded is not an answer, and a fault beats a stale one.
 //! assert_eq!(generation_outcome(0, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers), GenerationOutcome::Unseeded);
 //! let both = INTERRUPT_STATUS_RANDOM_NUMBER_READY | INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP;
-//! assert_eq!(generation_outcome(STATUS_SEEDED, both, [0; 8]), GenerationOutcome::Lockup);
+//! assert_eq!(generation_outcome(idle, both, [0; 8]), GenerationOutcome::Lockup);
+//!
+//! // A 128-bit answer fills only four words, so it is refused rather than padded to 32 bytes.
+//! let narrow = STATUS_SEEDED;
+//! assert_eq!(generation_outcome(narrow, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers), GenerationOutcome::WrongOutputWidth);
+//!
+//! // While a generation is still in flight the words may be mid-rewrite, whatever ISTAT says.
+//! let busy = idle | STATUS_GENERATING;
+//! assert_eq!(generation_outcome(busy, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers), GenerationOutcome::NotReady);
 //! ```
 
 /// Register byte offsets from the device's base, transcribed from `jh7110-trng.c`'s `#define`s
@@ -206,6 +217,7 @@ pub const STATUS_MODE_MISSION_MODE: u32 = 1 << 8;
 #[doc(alias = "NONCE_MODE")]
 pub const STATUS_NONCE_MODE: u32 = 1 << 2;
 /// `STAT` bit 3: the `RAND` register set is currently 256 bits wide, reflecting [`MODE_256_BIT_OUTPUT`].
+/// [`generation_outcome`] answers [`GenerationOutcome::WrongOutputWidth`] while it is clear.
 #[doc(alias = "R256")]
 pub const STATUS_256_BIT_OUTPUT: u32 = 1 << 3;
 /// `STAT` bit 8: the block is in mission mode, reflecting [`STATUS_MODE_MISSION_MODE`].
@@ -219,12 +231,14 @@ pub const STATUS_SEEDED: u32 = 1 << 9;
 pub const STATUS_SERVICE_REQUEST: u32 = 1 << 27;
 /// `STAT` bit 30: a generation is in flight. The driver's `wait_idle` polls this (and
 /// [`STATUS_RESEEDING`]) clear before issuing a new command, so two commands are never in flight at
-/// once.
+/// once. [`generation_outcome`] answers [`GenerationOutcome::NotReady`] while it is set, because
+/// the `RAND` words may be mid-rewrite.
 #[doc(alias = "RAND_GENERATING")]
 pub const STATUS_GENERATING: u32 = 1 << 30;
 /// `STAT` bit 31, `RAND_RESEEDING` in \[trm\] (`RAND_SEEDING` in the vendor driver): a reseed is
 /// in progress. This is not the opposite of [`STATUS_SEEDED`], which records only that the device
-/// has been seeded at least once.
+/// has been seeded at least once. [`generation_outcome`] answers [`GenerationOutcome::NotReady`]
+/// while it is set.
 #[doc(alias = "RAND_RESEEDING")]
 #[doc(alias = "STAT_RAND_SEEDING")]
 pub const STATUS_RESEEDING: u32 = 1 << 31;
@@ -372,9 +386,10 @@ pub fn is_status_okay(value: Option<&[u8]>) -> bool {
 
 /// The result of looking at one `ISTAT` snapshot (and the `RAND` words, if it looked ready).
 ///
-/// Deliberately not `Result`: neither variant is this crate's idea of an error. `NotReady` is the
+/// Deliberately not `Result`: no variant is this crate's idea of an error. `NotReady` is the
 /// expected answer on every poll but the last; `Lockup` is a real, documented hardware condition a
-/// caller is expected to handle (retry after reseed), not a bug.
+/// caller is expected to handle (retry after reseed), not a bug; `Unseeded` and `WrongOutputWidth`
+/// each name the bring-up step a caller repeats before asking again.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenerationOutcome {
     /// A generation completed cleanly. The 32 bytes are `RAND0..RAND7`, little-endian, word 0
@@ -383,9 +398,12 @@ pub enum GenerationOutcome {
     /// `ISTAT.LFSR_LOCKUP` was set: an SEU, per \[driver\]'s own comment. The caller should issue
     /// [`CONTROL_COMMAND_RESEED`] and retry, bounded: ask again a few times, then tell the truth.
     Lockup,
-    /// Neither bit was set: still generating, or not yet asked. Not a failure on its own; a caller
-    /// polls again, bounded by its own timeout (this crate does not impose one, because how long
-    /// "too long" is is a fact about the real device's timing this crate cannot know without it).
+    /// `RAND_RDY` was clear, or `STAT` reported a generation ([`STATUS_GENERATING`]) or a reseed
+    /// ([`STATUS_RESEEDING`]) in flight: still working, or not yet asked. While either is in flight
+    /// the `RAND` words may be mid-rewrite, so a latched `RAND_RDY` beside one is not an answer.
+    /// Not a failure on its own; a caller polls again, bounded by its own timeout (this crate does
+    /// not impose one, because how long "too long" is is a fact about the real device's timing
+    /// this crate cannot know without it).
     NotReady,
     /// **`STAT.SEEDED` was clear**, so whatever the `RAND` words hold did not come from a seeded
     /// pseudo-random number generator (PRNG) core and must not be served as randomness.
@@ -395,15 +413,34 @@ pub enum GenerationOutcome {
     /// state)", shows the block can really be in this state. A caller reseeds and retries,
     /// bounded, rather than reading the words anyway.
     Unseeded,
+    /// **`STAT.R256` ([`STATUS_256_BIT_OUTPUT`]) was clear**, so the block answers 128 bits: only
+    /// `RAND0..RAND3` carry the answer, and serving all eight words would hand a caller 16 bytes
+    /// the generation never wrote.
+    ///
+    /// The width after reset is a build-time parameter of the silicon, so a bring-up that never
+    /// writes [`MODE_256_BIT_OUTPUT`] to [`registers::MODE_REGISTER`] may meet this on every
+    /// generation. A caller writes that bit and asks for a new generation; polling again without
+    /// the write cannot change the answer.
+    #[doc(alias = "R256")]
+    WrongOutputWidth,
 }
 
 /// Decide what one `(STAT, ISTAT)` snapshot means, given the `RAND` words alongside it.
 ///
 /// A pure decode: the same `(status, interrupt_status, random_numbers)` always decides the same [`GenerationOutcome`]. The
-/// precedence is fault, then seeded, then ready. A lockup beats everything, because a register
-/// file the hardware is re-seeding must not be read as a clean answer. `SEEDED` beats `RAND_RDY`,
-/// because `RAND_RDY` is a latched write-1-to-clear bit that can be standing from before this
-/// driver ran, while `STAT.SEEDED` is live state; that is why `status` is a parameter.
+/// precedence is fault, then work in flight, then seeded, then width, then ready:
+///
+/// 1. A lockup beats everything, because a register file the hardware is re-seeding must not be
+///    read as a clean answer.
+/// 2. A generation or a reseed in flight ([`STATUS_GENERATING`], [`STATUS_RESEEDING`]) is
+///    `NotReady`, because the words may be mid-rewrite, and because the other refusals tell a
+///    caller to issue a command, which it must not do while one is in flight.
+/// 3. `SEEDED` beats `RAND_RDY`, because `RAND_RDY` is a latched write-1-to-clear bit that can be
+///    standing from before this driver ran, while `STAT.SEEDED` is live state; that is why
+///    `status` is a parameter.
+/// 4. A clear `STAT.R256` is `WrongOutputWidth`, because a 128-bit answer leaves four of the
+///    eight words unwritten.
+/// 5. Only then does `RAND_RDY` decide between `Ready` and `NotReady`.
 pub fn generation_outcome(
     status: u32,
     interrupt_status: u32,
@@ -411,8 +448,12 @@ pub fn generation_outcome(
 ) -> GenerationOutcome {
     if interrupt_status & INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP != 0 {
         GenerationOutcome::Lockup
+    } else if status & STATUS_GENERATING != 0 || status & STATUS_RESEEDING != 0 {
+        GenerationOutcome::NotReady
     } else if status & STATUS_SEEDED == 0 {
         GenerationOutcome::Unseeded
+    } else if status & STATUS_256_BIT_OUTPUT == 0 {
+        GenerationOutcome::WrongOutputWidth
     } else if interrupt_status & INTERRUPT_STATUS_RANDOM_NUMBER_READY != 0 {
         GenerationOutcome::Ready(output_bytes(random_numbers))
     } else {
@@ -438,10 +479,32 @@ pub fn output_bytes(random_numbers: [u32; 8]) -> [u8; 32] {
 /// whose protocol carries a different count clamps to its own.
 pub const WORD_BYTES: u64 = 8;
 
+/// What one [`Pool::take`] served: how many bytes, and the bytes themselves as one little-endian
+/// word, the first byte served in the low byte.
+///
+/// The bytes of `word` above `byte_count` are zero, so a short count never reads as more bytes
+/// than it carries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TakenBytes {
+    /// How many bytes were served, at most [`WORD_BYTES`]. Fewer than asked for means the
+    /// generator stopped answering.
+    pub byte_count: u64,
+    /// The bytes served, little-endian, the first one in the low byte.
+    pub word: u64,
+}
+
 /// **The 32 bytes in hand, and how many are still ours to give**, testable here without a
 /// register. [`take`](Pool::take) is handed a generator: a device poll in a driver, a counter in
 /// the tests. `cursor` only moves forward, so no byte is served twice, and each byte is zeroed as
 /// it leaves.
+///
+/// A `Pool` is neither `Clone` nor `Copy`, because a copy would serve the same bytes twice. Its
+/// `Debug` output prints [`remaining_bytes`](Pool::remaining_bytes) and never the buffer, so a
+/// diagnostic line cannot carry the bytes into a log. Dropping it zeroes the buffer, and
+/// [`refill`](Pool::refill) zeroes the bytes it discards. Both zeroing stores go through
+/// [`core::hint::black_box`] so the compiler keeps them; that is a best effort, not a guarantee,
+/// because a guaranteed store needs a volatile write and this crate holds no `unsafe`. Copies the
+/// generator's answer passed through on the way in are the caller's to clear.
 ///
 /// # Examples
 ///
@@ -450,26 +513,27 @@ pub const WORD_BYTES: u64 = 8;
 /// # // making progress spins, and a doctest that spins never fails, it keeps running.
 /// # let (done, finished) = std::sync::mpsc::channel();
 /// # std::thread::spawn(move || {
-/// use jh7110_entropy::Pool;
+/// use jh7110_entropy::{Pool, TakenBytes};
 ///
 /// // A device that answers with 32 bytes of 0xAB, forever.
 /// let mut generate = || Some([0xab; 32]);
 /// let mut pool = Pool::new();
-/// assert_eq!(pool.take(4, &mut generate), (4, 0xabab_abab));
+/// assert_eq!(pool.take(4, &mut generate), TakenBytes { byte_count: 4, word: 0xabab_abab });
+/// assert_eq!(pool.remaining_bytes(), 28);
 ///
 /// // A device that never answers: the caller is told, rather than spun on.
 /// let mut dry = || None;
 /// let mut pool = Pool::new();
-/// assert_eq!(pool.take(4, &mut dry), (0, 0));
+/// assert_eq!(pool.take(4, &mut dry), TakenBytes { byte_count: 0, word: 0 });
 /// # let _ = done.send(());
 /// # });
 /// # finished
 /// #     .recv_timeout(std::time::Duration::from_secs(5))
 /// #     .expect("the example panicked (see above), or take never returned");
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct Pool {
-    buf: [u8; 32],
+    buffer: [u8; 32],
     cursor: usize,
     filled: usize,
 }
@@ -480,12 +544,30 @@ impl Default for Pool {
     }
 }
 
+impl core::fmt::Debug for Pool {
+    /// Prints [`remaining_bytes`](Pool::remaining_bytes) only: the buffer holds bytes still to be
+    /// served, and a log line is not where they go.
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("Pool")
+            .field("remaining_bytes", &self.remaining_bytes())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Drop for Pool {
+    /// Zeroes the buffer, so the bytes still unserved do not outlive the pool in memory.
+    fn drop(&mut self) {
+        self.zero_buffer();
+    }
+}
+
 impl Pool {
     /// An empty pool: the first [`take`](Pool::take) generates.
     #[must_use]
     pub const fn new() -> Self {
         Pool {
-            buf: [0; 32],
+            buffer: [0; 32],
             cursor: 0,
             filled: 0,
         }
@@ -494,16 +576,19 @@ impl Pool {
     /// How many bytes are left before the next generation. Test and diagnostic support; the
     /// program reports it once, in its readiness message.
     #[must_use]
-    pub const fn remaining(&self) -> usize {
+    pub const fn remaining_bytes(&self) -> usize {
         self.filled - self.cursor
     }
 
     /// Fill from `generate`, discarding whatever was left. `false` when the generator would not
-    /// answer, which the caller reports rather than retries forever.
+    /// answer, which the caller reports rather than retries forever; the pool is then unchanged.
+    ///
+    /// The bytes discarded are zeroed before the new ones are written over them.
     pub fn refill(&mut self, generate: &mut impl FnMut() -> Option<[u8; 32]>) -> bool {
         match generate() {
             Some(bytes) => {
-                self.buf = bytes;
+                self.zero_buffer();
+                self.buffer = bytes;
                 self.cursor = 0;
                 self.filled = 32;
                 true
@@ -512,33 +597,47 @@ impl Pool {
         }
     }
 
-    /// Take `n` bytes, as a little-endian word plus a count. Gathers across a refill boundary, so
-    /// a request can straddle two generations without the client ever seeing the seam, and returns
-    /// a **short count** rather than zeros when the device stops answering mid-gather.
+    /// Take `byte_count` bytes, as a [`TakenBytes`]. Gathers across a refill boundary, so a request
+    /// can straddle two generations without the client ever seeing the seam, and returns a
+    /// **short count** rather than zeros when the device stops answering mid-gather.
     ///
-    /// **`n` is clamped to [`WORD_BYTES`]**, because the answer is one 64-bit word and there is
-    /// nowhere to put a ninth byte. A caller whose protocol already clamps to 8 never reaches this
-    /// clamp; it is here because a
-    /// public function that shifts by `8 * n` must not be callable into an overflow, and the first
-    /// host test written against this API found exactly that edge.
-    pub fn take(&mut self, n: u64, generate: &mut impl FnMut() -> Option<[u8; 32]>) -> (u64, u64) {
-        let n = n.min(WORD_BYTES);
+    /// **`byte_count` is clamped to [`WORD_BYTES`]**, because the answer is one 64-bit word and
+    /// there is nowhere to put a ninth byte. A caller whose protocol already clamps to 8 never
+    /// reaches this clamp; it is here because a public function that shifts by `8 * byte_count`
+    /// must not be callable into an overflow, and the first host test written against this API
+    /// found exactly that edge.
+    pub fn take(
+        &mut self,
+        byte_count: u64,
+        generate: &mut impl FnMut() -> Option<[u8; 32]>,
+    ) -> TakenBytes {
+        let wanted = byte_count.min(WORD_BYTES);
         let mut word = 0u64;
-        let mut got = 0u64;
-        while got < n {
+        let mut served = 0u64;
+        while served < wanted {
             if self.cursor == self.filled && !self.refill(generate) {
                 break;
             }
-            let run = (n - got).min((self.filled - self.cursor) as u64);
+            let run = (wanted - served).min((self.filled - self.cursor) as u64);
             for i in 0..run {
                 let at = self.cursor + i as usize;
-                word |= u64::from(self.buf[at]) << (8 * (got + i));
-                self.buf[at] = 0;
+                word |= u64::from(self.buffer[at]) << (8 * (served + i));
+                self.buffer[at] = 0;
             }
             self.cursor += run as usize;
-            got += run;
+            served += run;
         }
-        (got, word)
+        TakenBytes {
+            byte_count: served,
+            word,
+        }
+    }
+
+    /// Zero every byte of the buffer, served or not. `black_box` keeps the compiler from dropping
+    /// the stores as dead, which it may otherwise do before a drop or an overwrite.
+    fn zero_buffer(&mut self) {
+        self.buffer = [0; 32];
+        core::hint::black_box(&mut self.buffer);
     }
 }
 
@@ -546,14 +645,17 @@ impl Pool {
 mod tests {
     use super::*;
 
+    /// A seeded core in 256-bit mode with nothing in flight: the `STAT` a bring-up leaves.
+    const IDLE: u32 = STATUS_SEEDED | STATUS_256_BIT_OUTPUT;
+
     #[test]
     fn not_ready_when_neither_bit_is_set() {
         assert_eq!(
-            generation_outcome(STATUS_SEEDED, 0, [0; 8]),
+            generation_outcome(IDLE, 0, [0; 8]),
             GenerationOutcome::NotReady
         );
         assert_eq!(
-            generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_SEED_DONE, [0xffff_ffff; 8]),
+            generation_outcome(IDLE, INTERRUPT_STATUS_SEED_DONE, [0xffff_ffff; 8]),
             GenerationOutcome::NotReady
         );
     }
@@ -570,11 +672,7 @@ mod tests {
             0x1c1b_1a19,
             0x201f_1e1d,
         ];
-        match generation_outcome(
-            STATUS_SEEDED,
-            INTERRUPT_STATUS_RANDOM_NUMBER_READY,
-            random_numbers,
-        ) {
+        match generation_outcome(IDLE, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
             GenerationOutcome::Ready(bytes) => {
                 let expected: [u8; 32] = core::array::from_fn(|i| (i + 1) as u8);
                 assert_eq!(bytes, expected);
@@ -630,7 +728,7 @@ mod tests {
     fn lockup_beats_ready_in_the_same_snapshot() {
         assert_eq!(
             generation_outcome(
-                STATUS_SEEDED,
+                IDLE,
                 INTERRUPT_STATUS_RANDOM_NUMBER_READY
                     | INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP,
                 [0xffff_ffff; 8]
@@ -643,7 +741,7 @@ mod tests {
     fn lockup_alone_is_reported_even_with_no_rand_rdy() {
         assert_eq!(
             generation_outcome(
-                STATUS_SEEDED,
+                IDLE,
                 INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP,
                 [0; 8]
             ),
@@ -656,8 +754,67 @@ mod tests {
         // SEED_DONE (bit 1) and RAND_RDY (bit 0) are adjacent; a shift-by-one bug here would pass
         // every other test in this file and fail silently on real hardware after a reseed.
         assert_eq!(
-            generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_SEED_DONE, [0; 8]),
+            generation_outcome(IDLE, INTERRUPT_STATUS_SEED_DONE, [0; 8]),
             GenerationOutcome::NotReady
+        );
+    }
+
+    /// **A 128-bit answer is refused.** With `STAT.R256` clear only four words carry the
+    /// generation, so a seeded, idle core with `RAND_RDY` set answers `WrongOutputWidth`, and so
+    /// does one still waiting, because no amount of polling changes the width.
+    #[test]
+    fn a_128_bit_answer_is_refused() {
+        for interrupt_status in [0, INTERRUPT_STATUS_RANDOM_NUMBER_READY] {
+            assert_eq!(
+                generation_outcome(STATUS_SEEDED, interrupt_status, [0xffff_ffff; 8]),
+                GenerationOutcome::WrongOutputWidth
+            );
+        }
+        // A lockup still outranks it, and an unseeded core is still Unseeded first.
+        assert_eq!(
+            generation_outcome(
+                STATUS_SEEDED,
+                INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP,
+                [0; 8]
+            ),
+            GenerationOutcome::Lockup
+        );
+        assert_eq!(
+            generation_outcome(0, INTERRUPT_STATUS_RANDOM_NUMBER_READY, [0; 8]),
+            GenerationOutcome::Unseeded
+        );
+    }
+
+    /// **Work in flight is `NotReady`, whatever `ISTAT` says.** A `RAND_RDY` latched from the last
+    /// generation beside a new generation or a reseed in flight is not an answer: the words may be
+    /// mid-rewrite.
+    #[test]
+    fn a_generation_or_reseed_in_flight_is_not_ready() {
+        for in_flight in [
+            STATUS_GENERATING,
+            STATUS_RESEEDING,
+            STATUS_GENERATING | STATUS_RESEEDING,
+        ] {
+            for status in [IDLE | in_flight, in_flight, STATUS_SEEDED | in_flight] {
+                assert_eq!(
+                    generation_outcome(
+                        status,
+                        INTERRUPT_STATUS_RANDOM_NUMBER_READY,
+                        [0xffff_ffff; 8]
+                    ),
+                    GenerationOutcome::NotReady,
+                    "STAT {status:#010x}"
+                );
+            }
+        }
+        // A lockup is still reported while a reseed runs.
+        assert_eq!(
+            generation_outcome(
+                IDLE | STATUS_RESEEDING,
+                INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP,
+                [0; 8]
+            ),
+            GenerationOutcome::Lockup
         );
     }
 
@@ -715,9 +872,9 @@ mod tests {
             let mut seen = [0u32; 256];
             // 40 draws of 8 bytes is 320 bytes, ten generations, so the seam is crossed nine times.
             for _ in 0..40 {
-                let (got, word) = pool.take(8, &mut generate);
-                assert_eq!(got, 8);
-                for b in word.to_le_bytes() {
+                let taken = pool.take(8, &mut generate);
+                assert_eq!(taken.byte_count, 8);
+                for b in taken.word.to_le_bytes() {
                     seen[b as usize] += 1;
                 }
             }
@@ -744,11 +901,11 @@ mod tests {
             // Five-byte draws: the seventh starts at byte 30 of a 32-byte block, so it takes two
             // bytes from block 1 and three from block 2.
             for _ in 0..6 {
-                assert_eq!(pool.take(5, &mut generate).0, 5);
+                assert_eq!(pool.take(5, &mut generate).byte_count, 5);
             }
-            let (got, word) = pool.take(5, &mut generate);
-            assert_eq!(got, 5);
-            assert_eq!(word.to_le_bytes()[..5], [1, 1, 2, 2, 2]);
+            let taken = pool.take(5, &mut generate);
+            assert_eq!(taken.byte_count, 5);
+            assert_eq!(taken.word.to_le_bytes()[..5], [1, 1, 2, 2, 2]);
         });
     }
 
@@ -768,12 +925,18 @@ mod tests {
                 }
             };
             let mut pool = Pool::new();
-            assert_eq!(pool.take(8, &mut generate).0, 8);
+            assert_eq!(pool.take(8, &mut generate).byte_count, 8);
             // Drain the one block this generator will ever give: 32 bytes, so three more eights.
             for _ in 0..3 {
-                assert_eq!(pool.take(8, &mut generate).0, 8);
+                assert_eq!(pool.take(8, &mut generate).byte_count, 8);
             }
-            assert_eq!(pool.take(8, &mut generate), (0, 0));
+            assert_eq!(
+                pool.take(8, &mut generate),
+                TakenBytes {
+                    byte_count: 0,
+                    word: 0
+                }
+            );
         });
     }
 
@@ -784,10 +947,49 @@ mod tests {
         within_a_deadline(|| {
             let mut generate = || Some([0xa5; 32]);
             let mut pool = Pool::new();
-            assert_eq!(pool.take(8, &mut generate), (8, 0xa5a5_a5a5_a5a5_a5a5));
-            assert_eq!(pool.buf[..8], [0u8; 8]);
-            assert_eq!(pool.remaining(), 24);
+            assert_eq!(
+                pool.take(8, &mut generate),
+                TakenBytes {
+                    byte_count: 8,
+                    word: 0xa5a5_a5a5_a5a5_a5a5
+                }
+            );
+            assert_eq!(pool.buffer[..8], [0u8; 8]);
+            assert_eq!(pool.remaining_bytes(), 24);
         });
+    }
+
+    /// **A refill zeroes what it discards, and so does a drop.** Both go through `zero_buffer`,
+    /// which is what this checks; that `Drop` calls it is visible only in memory a safe test cannot
+    /// read after the drop.
+    #[test]
+    fn zero_buffer_clears_every_byte() {
+        let mut pool = Pool::new();
+        assert!(pool.refill(&mut || Some([0x5a; 32])));
+        pool.zero_buffer();
+        assert_eq!(pool.buffer, [0u8; 32]);
+    }
+
+    /// **A refill that gets no answer leaves the pool as it was**, so a dry device never turns
+    /// unserved bytes into zeros a later take would serve.
+    #[test]
+    fn a_refused_refill_leaves_the_pool_unchanged() {
+        let mut pool = Pool::new();
+        assert!(pool.refill(&mut || Some([0x5a; 32])));
+        assert!(!pool.refill(&mut || None));
+        assert_eq!(pool.buffer, [0x5a; 32]);
+        assert_eq!(pool.remaining_bytes(), 32);
+    }
+
+    /// **`Debug` prints the count and never the bytes.** A pool full of `0xa5` prints no `165`,
+    /// the byte's decimal spelling that a derived `Debug` would repeat 32 times.
+    #[test]
+    fn debug_prints_the_remaining_count_and_not_the_buffer() {
+        let mut pool = Pool::new();
+        assert!(pool.refill(&mut || Some([0xa5; 32])));
+        let printed = format!("{pool:?}");
+        assert_eq!(printed, "Pool { remaining_bytes: 32, .. }");
+        assert!(!printed.contains("165"));
     }
 
     /// **A caller asking for more than a word gets a word**, not a shift-left overflow. The wire
@@ -797,7 +999,13 @@ mod tests {
         within_a_deadline(|| {
             let mut generate = || Some([0x11; 32]);
             let mut pool = Pool::new();
-            assert_eq!(pool.take(64, &mut generate), (8, 0x1111_1111_1111_1111));
+            assert_eq!(
+                pool.take(64, &mut generate),
+                TakenBytes {
+                    byte_count: 8,
+                    word: 0x1111_1111_1111_1111
+                }
+            );
         });
     }
 
@@ -913,9 +1121,18 @@ mod tests {
     fn take_returns_rather_than_spinning() {
         assert_eq!(
             take_within_a_deadline(4, || Some([0xab; 32])),
-            (4, 0xabab_abab)
+            TakenBytes {
+                byte_count: 4,
+                word: 0xabab_abab
+            }
         );
-        assert_eq!(take_within_a_deadline(8, || None), (0, 0));
+        assert_eq!(
+            take_within_a_deadline(8, || None),
+            TakenBytes {
+                byte_count: 0,
+                word: 0
+            }
+        );
 
         // One answer and then nothing, so a single call crosses from "has bytes" to "dry".
         let mut answers = 1;
@@ -928,17 +1145,17 @@ mod tests {
                     None
                 }
             })
-            .0,
+            .byte_count,
             8
         );
     }
 
     /// A fresh [`Pool`] per call, because the point is the call and not the history.
     fn take_within_a_deadline(
-        n: u64,
+        byte_count: u64,
         mut generate: impl FnMut() -> Option<[u8; 32]> + Send + 'static,
-    ) -> (u64, u64) {
-        within_a_deadline(move || Pool::new().take(n, &mut generate))
+    ) -> TakenBytes {
+        within_a_deadline(move || Pool::new().take(byte_count, &mut generate))
     }
 
     /// The deadline itself: run `body` on a worker and fail if it has not finished in five

@@ -16,11 +16,13 @@ it stay green. The rewrite states the little-endian layout the doc comment claim
 indexed out of the words by hand, which the implementation does not get to choose.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 3e18770..16a4952 100644
+index 6e8fd7c..89fdf83 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -430,3 +430,3 @@ pub fn output_bytes(random_numbers: [u32; 8]) -> [u8; 32] {
+@@ -470,5 +470,5 @@ pub fn output_bytes(random_numbers: [u32; 8]) -> [u8; 32] {
+     let mut out = [0u8; 32];
      for (i, word) in random_numbers.iter().enumerate() {
 -        out[i * 4..i * 4 + 4].copy_from_slice(&word.to_le_bytes());
 +        out[i * 4..i * 4 + 4].copy_from_slice(&word.to_be_bytes());
      }
+     out
