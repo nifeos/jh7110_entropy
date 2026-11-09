@@ -10,23 +10,33 @@ RISC-V system-on-chip of the VisionFive 2. It holds the register layout and the 
 generation succeeded, failed or is still running. It also holds a small pool that serves the 32
 bytes of one generation without serving any byte twice, and what each of the chip's two device
 trees calls the block. It never touches a register: you map the window and do the volatile reads, and this crate
-decides what they mean. It is `no_std` and tested on the host.
+decides what they mean. It is `no_std` and tested on the host. It has no dependencies and holds no
+`unsafe` code.
 
-## Build, test and prove
+## EXAMPLES
 
-You need a Rust toolchain at or above the minimum version at the foot of this page (`rustup` is the
-usual way to get one) and a git checkout. From the crate root:
+```rust
+use jh7110_entropy::{GenerationOutcome, generation_outcome, is_status_okay, INTERRUPT_STATUS_RANDOM_NUMBER_READY, STATUS_SEEDED};
 
-- `cargo build` and `cargo test` run on the host and need nothing else. The tests are 18 unit tests
-  and 2 doctests.
-- The crate also builds for bare metal. Add the three targets with `rustup target add
-  riscv64imac-unknown-none-elf aarch64-unknown-none-softfloat x86_64-unknown-none`. Then run
-  `cargo build --lib --target <target>` for each. CI does exactly this.
-- The proofs need Kani, which `rustup` does not install. Run `cargo install --locked
-  kani-verifier --version 0.68.0`, then `cargo kani setup`. The setup step downloads a model
-  checker, so it needs network access. CI uses version 0.68.0, and another version may verify
-  differently. After that, `cargo kani` runs all four harnesses, which takes about 15 seconds on a laptop-class
-  machine. To run one, add `--harness <name>`.
+// Firmware that says nothing about `status` means "okay".
+assert!(is_status_okay(None));
+assert!(!is_status_okay(Some(b"disabled\0")));
+
+// A seeded core with RAND_RDY set: the eight words, little-endian, word 0 first.
+let random_numbers = [0x0403_0201, 0, 0, 0, 0, 0, 0, 0];
+match generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
+    GenerationOutcome::Ready(bytes) => assert_eq!(&bytes[..4], &[1, 2, 3, 4]),
+    other => panic!("expected Ready, got {other:?}"),
+}
+```
+
+A driver writes `MODE_256_BIT_OUTPUT` during bring-up (otherwise only four words carry the answer), clears
+`ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
+writes `CONTROL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
+`Unseeded` it reseeds and retries, bounded. The crate sets no bound, no poll interval and no
+timeout: you pick them, ideally from a measurement on your board. This
+README gives no timing figure. Wrap `Pool` and the register access in one lock; `Pool`
+does no locking of its own.
 
 ## What is proven
 
@@ -54,6 +64,22 @@ Not proven: the quality of the randomness, which is a property of the silicon; `
 `Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment carries a runnable
 example.
 
+## Build, test and prove
+
+You need a Rust toolchain at or above the minimum version at the foot of this page (`rustup` is the
+usual way to get one) and a git checkout. From the crate root:
+
+- `cargo build` and `cargo test` run on the host and need nothing else. The tests are 18 unit tests
+  and 2 doctests.
+- The crate also builds for bare metal. Add the three targets with `rustup target add
+  riscv64imac-unknown-none-elf aarch64-unknown-none-softfloat x86_64-unknown-none`. Then run
+  `cargo build --lib --target <target>` for each. CI does exactly this.
+- The proofs need Kani, which `rustup` does not install. Run `cargo install --locked
+  kani-verifier --version 0.68.0`, then `cargo kani setup`. The setup step downloads a model
+  checker, so it needs network access. CI uses version 0.68.0, and another version may verify
+  differently. After that, `cargo kani` runs all four harnesses, which takes about 15 seconds on a laptop-class
+  machine. To run one, add `--harness <name>`.
+
 ## The two device trees
 
 Mainline Linux names the block `starfive,jh7110-trng`. The vendor U-Boot's control tree, which a
@@ -63,31 +89,6 @@ for it. `COMPATIBLES` lists both, mainline's first. Walk your tree for a node ca
 its `reg`, decode `interrupts` with `interrupt_line` and `status` with `is_status_okay`, and keep the
 result in a `Discovered`. A disabled node is the first suspect when the window reads all zeros. The crate has no helper that
 walks a tree for you; it decodes the properties and you do the walking with your own parser.
-
-## EXAMPLES
-
-```rust
-use jh7110_entropy::{GenerationOutcome, generation_outcome, is_status_okay, INTERRUPT_STATUS_RANDOM_NUMBER_READY, STATUS_SEEDED};
-
-// Firmware that says nothing about `status` means "okay".
-assert!(is_status_okay(None));
-assert!(!is_status_okay(Some(b"disabled\0")));
-
-// A seeded core with RAND_RDY set: the eight words, little-endian, word 0 first.
-let random_numbers = [0x0403_0201, 0, 0, 0, 0, 0, 0, 0];
-match generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
-    GenerationOutcome::Ready(bytes) => assert_eq!(&bytes[..4], &[1, 2, 3, 4]),
-    other => panic!("expected Ready, got {other:?}"),
-}
-```
-
-A driver writes `MODE_256_BIT_OUTPUT` during bring-up (otherwise only four words carry the answer), clears
-`ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
-writes `CONTROL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
-`Unseeded` it reseeds and retries, bounded. The crate sets no bound, no poll interval and no
-timeout: you pick them, ideally from a measurement on your board. This
-README gives no timing figure. Wrap `Pool` and the register access in one lock; `Pool`
-does no locking of its own.
 
 ## Hardware evidence
 
@@ -110,7 +111,9 @@ Not established:
 - The two compatible strings come from the mainline binding's example and the vendor U-Boot tree,
   not from dumps of a board's device tree. No test here walks a real tree.
 
-Minimum Rust version: 1.88.
+## Minimum Rust version
+
+1.88, the manifest's `rust-version`.
 
 ## License
 
