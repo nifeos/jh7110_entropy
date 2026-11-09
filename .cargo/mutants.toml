@@ -7,7 +7,7 @@
 # mutation testing. Mutating it with the unit-test suite measures nothing.
 exclude_globs = ["src/verification.rs"]
 
-# INTERRUPT_STATUS_DOCUMENTED_BITS_MASK (src/lib.rs:291 to 295) is the `|` of the five documented
+# INTERRUPT_STATUS_DOCUMENTED_BITS_MASK (src/lib.rs:305 to 309) is the `|` of the five documented
 # interrupt status bits, one per line: bits 0 to 4, pairwise disjoint. For disjoint x and y,
 # `x | y` and `x ^ y` are the same number, so replacing any one of the four `|` with `^` leaves
 # 0b1_1111 and no test can tell. The unit tests pin the disjointness
@@ -15,4 +15,4 @@ exclude_globs = ["src/verification.rs"]
 # survivors-file used by the weekly gate holds one entry per source line, and the four mutants sit
 # on these lines, so the exclusion lives here. If the lines move, the pattern stops matching and the
 # gate fails loudly, which is the safe direction.
-exclude_re = ['^src/lib\.rs:29[2-5]:\d+: replace \| with \^$']
+exclude_re = ['^src/lib\.rs:30[6-9]:\d+: replace \| with \^$']
