@@ -8,7 +8,6 @@ Expected to fail: the harness's `assert_eq!(pool.buffer[first + j], 0, "a served
 for any request of at least one byte whose served bytes were not already zero.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 6e8fd7c..9903252 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
 @@ -623,5 +623,4 @@ impl Pool {

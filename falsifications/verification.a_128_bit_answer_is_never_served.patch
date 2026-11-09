@@ -9,7 +9,6 @@ Expected to fail: the harness's `assert!(!matches!(outcome, GenerationOutcome::R
 seeded, idle core with `R256` clear and `RAND_RDY` set returns `Ready`.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 6e8fd7c..f326906 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
 @@ -453,6 +453,4 @@ pub fn generation_outcome(

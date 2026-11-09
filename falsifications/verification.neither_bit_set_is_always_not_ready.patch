@@ -8,7 +8,6 @@ Expected to fail: the harness's `assert_eq!(generation_outcome(status, interrupt
 produces `Ready`.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 6e8fd7c..6409c73 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
 @@ -455,5 +455,5 @@ pub fn generation_outcome(

@@ -9,11 +9,10 @@ Expected to fail: the harness's `assert_eq!(generation_outcome(status, interrupt
 `RAND_RDY` latched returns `Ready`.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 6e8fd7c..2bbfa55 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
 @@ -451,5 +451,5 @@ pub fn generation_outcome(
-     } else if status & (STATUS_GENERATING | STATUS_RESEEDING) != 0 {
+     } else if status & STATUS_GENERATING != 0 || status & STATUS_RESEEDING != 0 {
          GenerationOutcome::NotReady
 -    } else if status & STATUS_SEEDED == 0 {
 +    } else if status & STATUS_SEEDED == 0 && interrupt_status & INTERRUPT_STATUS_RANDOM_NUMBER_READY == 0 {

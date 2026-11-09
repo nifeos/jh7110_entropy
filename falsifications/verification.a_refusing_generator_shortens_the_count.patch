@@ -8,7 +8,6 @@ Expected to fail: the harness's `assert_eq!(taken.byte_count, expected, "the cou
 for any request larger than what the pool holds.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 6e8fd7c..78889d7 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
 @@ -617,4 +617,5 @@ impl Pool {

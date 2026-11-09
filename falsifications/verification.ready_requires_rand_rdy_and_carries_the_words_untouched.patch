@@ -16,7 +16,6 @@ it stay green. The rewrite states the little-endian layout the doc comment claim
 indexed out of the words by hand, which the implementation does not get to choose.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index 6e8fd7c..89fdf83 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
 @@ -470,5 +470,5 @@ pub fn output_bytes(random_numbers: [u32; 8]) -> [u8; 32] {

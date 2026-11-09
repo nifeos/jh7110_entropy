@@ -8,7 +8,6 @@ Expected to fail: the harness's `assert_eq!(generation_outcome(status, interrupt
 a seeded core in 256-bit mode with `RAND_RESEEDING` set and `RAND_RDY` latched returns `Ready`.
 
 diff --git a/src/lib.rs b/src/lib.rs
-index e4d9b5d..89e45ba 100644
 --- a/src/lib.rs
 +++ b/src/lib.rs
 @@ -449,5 +449,5 @@ pub fn generation_outcome(

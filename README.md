@@ -101,9 +101,9 @@ assert_eq!(
 );
 ```
 
-A driver writes `MODE_256_BIT_OUTPUT` during bring-up (otherwise only four words carry the answer,
-and `generation_outcome` answers `WrongOutputWidth` until the driver writes it), clears
-`ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
+A driver writes `MODE_256_BIT_OUTPUT` during bring-up. Otherwise only four words carry the
+answer, and `generation_outcome` answers `WrongOutputWidth` until the driver writes it. The driver
+then clears `ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
 writes `CONTROL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
 `Unseeded` it reseeds and retries, bounded. On `NotReady`, which also covers a generation or a
 reseed still in flight, it polls again rather than issuing a command. The crate sets no bound, no poll interval and no
