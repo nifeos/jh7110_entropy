@@ -120,7 +120,7 @@ walks a tree for you; it decodes the properties and you do the walking with your
 Run on 2026-11-09 (UTC), on one VisionFive 2, against commit `ee0bde8feb9f78a67da011c928f9a2a697f3bbc1`
 of this repository. A small bare-metal RISC-V payload built on that commit's constants and its
 `generation_outcome` performed the register sequences below and printed one checksummed line per
-result; a script judged the log. The payload was loaded over the network, and the person running it
+result; a script judged the log. The payload came over the network, and the person running it
 powered the board on from off. The payload's SHA-256 is
 `e421000bc0b66d35ac60315cbe618ba1c8e15fb46d9bf8aac44f3a27b82054e8`; the console log's is
 `540996ad74682bd9fbe350e897028af2310113a9d210df37590847b40a2c960e` and the 1,310,720-byte capture's
@@ -135,11 +135,11 @@ What passed, with the board as the judge:
   `STAT.SEEDED` set.
 - Two generations by polling both answered `ready`, with 32 bytes that were not all zero and
   differed from each other.
-- `STAT.R256` read 1 after `MODE_256_BIT_OUTPUT` was written. `FEATURES` bits 1:0 and `BCONF` bit 2
-  both said the block was built for 256-bit output.
+- `STAT.R256` read 1 after the payload wrote `MODE_256_BIT_OUTPUT`. `FEATURES` bits 1:0 and `BCONF` bit 2
+  both said the silicon supports 256-bit output.
 - No poll timed out in 1,048,576 generations on the driver path. All
   1,048,576 answered `ready`, none was all zero, none came back unseeded or at the wrong width.
-- After the bring-up's clear of `ISTAT`, no documented bit was left. Setting `AUTO_RQSTS` or
+- After the bring-up's clear of `ISTAT`, no documented bit remained. Setting `AUTO_RQSTS` or
   `AUTO_AGE` latched `ISTAT` bit 3 or bit 2 as documented, and the residue after clearing held no
   documented bit.
 
@@ -162,21 +162,21 @@ What the board answered, recorded and not judged:
   written over a latched `RAND_RDY`, 8,775 snapshots showed it in both reads and 9,000 in at least
   one, over 1,000 trials; the block accepted all 1,000 commands and changed the `RAND` words each
   time. So the two bits do appear together when a command lands on a latched `RAND_RDY`.
-- Timing, at the 4 MHz time CSR: a generation took a median of 24 ticks (6.0 microseconds, maximum
+- Timing, at the 4 megahertz time control and status register (CSR): a generation took a median of 24 ticks (6.0 microseconds, maximum
   6.25) and a reseed a median of 174 ticks (43.5 microseconds, maximum 50.75). One read of the time
   CSR costs at least one tick, and every figure includes it.
 - `LFSR_LOCKUP` never set in 1,048,576 generations, so the run could not test whether a reseed
   clears it. That stays open.
 
-Statistics, on one 1,310,720-byte capture (40,960 generations, every record verified): 2 of 524
-FIPS 140-2 blocks failed. A good source fails about one in 1,250, and the check's bar was at most 3.
+Statistics, on one 1,310,720-byte capture (40,960 generations, every record's checksum matched): 2 of 524
+Federal Information Processing Standard 140-2 blocks failed. A good source fails about one in 1,250, and the check's bar was at most 3.
 Shannon entropy was 7.999854 bits per byte, and the chi-square over byte values was 264.17 (upper-tail
 p 0.3333). The mean byte was 127.5159, the lag-1 serial correlation -0.000949, and no 32-byte
-generation repeated. No outside statistical suite was run.
+generation repeated. No outside statistical suite ran.
 
 One capture showing no gross defect says nothing about unpredictability. A stream that looks good
 from one boot is also what a weak source produces. A health test and a measurement in the manner of
-NIST SP 800-90B are still absent.
+National Institute of Standards and Technology Special Publication 800-90B are still absent.
 
 Not established:
 
