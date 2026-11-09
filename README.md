@@ -16,60 +16,82 @@ decides what they mean. It is `no_std` and tested on the host. It has no depende
 ## EXAMPLES
 
 ```rust
-use jh7110_entropy::{GenerationOutcome, generation_outcome, is_status_okay, INTERRUPT_STATUS_RANDOM_NUMBER_READY, STATUS_SEEDED};
+use jh7110_entropy::{GenerationOutcome, generation_outcome, is_status_okay, INTERRUPT_STATUS_RANDOM_NUMBER_READY, STATUS_256_BIT_OUTPUT, STATUS_SEEDED};
 
 // Firmware that says nothing about `status` means "okay".
 assert!(is_status_okay(None));
 assert!(!is_status_okay(Some(b"disabled\0")));
 
-// A seeded core with RAND_RDY set: the eight words, little-endian, word 0 first.
+// A seeded core in 256-bit mode with RAND_RDY set: the eight words, little-endian, word 0 first.
 let random_numbers = [0x0403_0201, 0, 0, 0, 0, 0, 0, 0];
-match generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
+let status = STATUS_SEEDED | STATUS_256_BIT_OUTPUT;
+match generation_outcome(status, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers) {
     GenerationOutcome::Ready(bytes) => assert_eq!(&bytes[..4], &[1, 2, 3, 4]),
     other => panic!("expected Ready, got {other:?}"),
 }
+
+// The same snapshot from a core left in 128-bit mode is refused, not served.
+assert_eq!(
+    generation_outcome(STATUS_SEEDED, INTERRUPT_STATUS_RANDOM_NUMBER_READY, random_numbers),
+    GenerationOutcome::WrongOutputWidth
+);
 ```
 
-A driver writes `MODE_256_BIT_OUTPUT` during bring-up (otherwise only four words carry the answer), clears
-`ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
+A driver writes `MODE_256_BIT_OUTPUT` during bring-up. Otherwise only four words carry the
+answer, and `generation_outcome` answers `WrongOutputWidth` until the driver writes it. The driver
+then clears `ISTAT` with `INTERRUPT_STATUS_DOCUMENTED_BITS_MASK`, asks for a reseed with `CONTROL_COMMAND_RESEED`, then for each request
 writes `CONTROL_COMMAND_GENERATE`, polls `STAT` and `ISTAT`, and hands them to `generation_outcome`. On `Lockup` or
-`Unseeded` it reseeds and retries, bounded. The crate sets no bound, no poll interval and no
+`Unseeded` it reseeds and retries, bounded. On `NotReady`, which also covers a generation or a
+reseed still in flight, it polls again rather than issuing a command. The crate sets no bound, no poll interval and no
 timeout: you pick them, ideally from a measurement on your board. This
 README gives no timing figure. Wrap `Pool` and the register access in one lock; `Pool`
 does no locking of its own.
 
 ## What is proven
 
-Four Kani harnesses exhaust `generation_outcome`, the function that turns one snapshot of the status
+Six Kani harnesses exhaust `generation_outcome`, the function that turns one snapshot of the status
 register (`STAT`) and the interrupt status register (`ISTAT`), plus the eight random-output words
 (`RAND`), into an answer:
 
 - `verification::a_lockup_bit_is_never_overridden`: whenever `ISTAT.LFSR_LOCKUP` (a lockup of the linear-feedback shift register (LFSR) that feeds the
   generator) reads 1, the answer
   is `Lockup`, whatever else the register says.
-- `verification::ready_requires_rand_rdy_and_carries_the_words_untouched`: `Ready` comes only from
-  `RAND_RDY` on a seeded core, and its 32 bytes are the eight words, little-endian, word 0 first.
-- `verification::neither_bit_set_is_always_not_ready`: a seeded core with neither bit set is
-  `NotReady`.
+- `verification::ready_requires_rand_rdy_and_carries_the_words_untouched`: `RAND_RDY` on a seeded,
+  idle core in 256-bit mode is `Ready`, and its 32 bytes are the eight words, little-endian, word 0
+  first.
+- `verification::neither_bit_set_is_always_not_ready`: a seeded core in 256-bit mode with neither
+  bit set is `NotReady`.
 - `verification::an_unseeded_core_never_yields_bytes`: with `STAT.SEEDED` clear, no `ISTAT` value
   yields bytes.
+- `verification::a_128_bit_answer_is_never_served`: with `STAT.R256` clear, no input yields bytes,
+  and a seeded, idle core answers `WrongOutputWidth`.
+- `verification::work_in_flight_is_always_not_ready`: with a generation or a reseed in flight, the
+  answer is `NotReady` unless `LFSR_LOCKUP` is set.
+
+Two more cover `Pool::take`, over every pool state and every request size:
+
+- `verification::take_serves_the_bytes_in_order_and_zeroes_them`: with a generator that answers,
+  `take` serves `min(byte_count, 8)` bytes, the pool's own first and the new block's after them, in
+  order, and zeroes each byte it served.
+- `verification::a_refusing_generator_shortens_the_count`: with a generator that never answers,
+  the count is what the pool held, never padded with zeros.
 
 Each harness has a falsification record at
 `falsifications/<module.path>.<harness>.patch`; applying it with `git apply -p1` from the crate root
 makes that harness fail at its own assertion, which shows the proof checks something. The patches
 need a git checkout, and you revert each one with `git checkout -- src` before the next.
 
-Not proven: the quality of the randomness, which is a property of the silicon; `Pool` and
-`output_bytes`, which copy words and have unit tests; and the device-tree decoders, which have tests too.
-`Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment carries a runnable
-example.
+Not proven: the quality of the randomness, which is a property of the silicon; that dropping a
+`Pool` zeroes its buffer, which safe code cannot observe; and the device-tree decoders, which have
+unit tests. `Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment carries
+a runnable example.
 
 ## Build, test and prove
 
 You need a Rust toolchain at or above the minimum version at the foot of this page (`rustup` is the
 usual way to get one) and a git checkout. From the crate root:
 
-- `cargo build` and `cargo test` run on the host and need nothing else. The tests are 18 unit tests
+- `cargo build` and `cargo test` run on the host and need nothing else. The tests are 23 unit tests
   and 2 doctests.
 - The crate also builds for bare metal. Add the three targets with `rustup target add
   riscv64imac-unknown-none-elf aarch64-unknown-none-softfloat x86_64-unknown-none`. Then run
@@ -77,8 +99,8 @@ usual way to get one) and a git checkout. From the crate root:
 - The proofs need Kani, which `rustup` does not install. Run `cargo install --locked
   kani-verifier --version 0.68.0`, then `cargo kani setup`. The setup step downloads a model
   checker, so it needs network access. CI uses version 0.68.0, and another version may verify
-  differently. After that, `cargo kani` runs all four harnesses, which takes about 15 seconds on a laptop-class
-  machine. To run one, add `--harness <name>`.
+  differently. After that, `cargo kani` runs all eight harnesses, which takes about a minute on a
+  desktop-class machine. To run one, add `--harness <name>`.
 
 ## The two device trees
 

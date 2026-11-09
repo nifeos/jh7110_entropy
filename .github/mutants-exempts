@@ -4,5 +4,10 @@
 # refused too, so this list can only shrink by a diff that says why.
 
 # Shifting 1 by zero: `1 << 0` and `1 >> 0` are the same value, 1.
-src/lib.rs:253 # INTERRUPT_ENABLE_RANDOM_NUMBER_READY is `1 << 0`; `1 >> 0` is also 1, so the constant is unchanged
-src/lib.rs:279 # INTERRUPT_STATUS_RANDOM_NUMBER_READY is `1 << 0`; `1 >> 0` is also 1, so the constant is unchanged
+src/lib.rs:267 # INTERRUPT_ENABLE_RANDOM_NUMBER_READY is `1 << 0`; `1 >> 0` is also 1, so the constant is unchanged
+src/lib.rs:293 # INTERRUPT_STATUS_RANDOM_NUMBER_READY is `1 << 0`; `1 >> 0` is also 1, so the constant is unchanged
+
+# Zeroing on drop: what `Drop` writes is visible only in memory that safe code cannot read once the
+# pool is gone, so no test can tell a zeroing drop from an empty one. `zero_buffer`, which it calls,
+# is tested directly (zero_buffer_clears_every_byte).
+src/lib.rs:643 # replacing `<impl Drop for Pool>::drop` with () is unobservable from safe code after the drop

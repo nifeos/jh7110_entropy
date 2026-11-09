@@ -1,0 +1,18 @@
+Falsifies `jh7110_entropy::verification::take_serves_the_bytes_in_order_and_zeroes_them`.
+
+The defect: `Pool::take` copies each byte into the word and leaves it in the buffer. Every byte is
+still served once, because the cursor moves past it, but a served byte stays in memory until the
+next refill or the drop, which is what zeroing behind the cursor exists to prevent.
+
+Expected to fail: the harness's `assert_eq!(pool.buffer[first + j], 0, "a served byte is still in the buffer")`,
+for any request of at least one byte whose served bytes were not already zero.
+
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -623,5 +623,4 @@ impl Pool {
+                 let at = self.cursor + i as usize;
+                 word |= u64::from(self.buffer[at]) << (8 * (served + i));
+-                self.buffer[at] = 0;
+             }
+             self.cursor += run as usize;
