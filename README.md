@@ -169,11 +169,14 @@ What the board answered, recorded and not judged:
   clears it. That stays open.
 
 Statistics, on one 1,310,720-byte capture (40,960 generations, every record verified): 2 of 524
-FIPS 140-2 blocks failed (a good source fails about one in 1,250, and the check's bar was at most 3); Shannon entropy 7.999854 bits per byte; chi-square over
-byte values 264.17 (upper-tail p 0.3333); mean byte 127.5159; lag-1 serial correlation -0.000949; no
-repeated 32-byte generation. No outside statistical suite was run. One capture showing no gross
-defect says nothing about unpredictability: a good-looking stream from one boot is what a weak
-source also produces, and a health test and a measurement in the manner of NIST SP 800-90B are still absent.
+FIPS 140-2 blocks failed. A good source fails about one in 1,250, and the check's bar was at most 3.
+Shannon entropy was 7.999854 bits per byte, and the chi-square over byte values was 264.17 (upper-tail
+p 0.3333). The mean byte was 127.5159, the lag-1 serial correlation -0.000949, and no 32-byte
+generation repeated. No outside statistical suite was run.
+
+One capture showing no gross defect says nothing about unpredictability. A stream that looks good
+from one boot is also what a weak source produces. A health test and a measurement in the manner of
+NIST SP 800-90B are still absent.
 
 Not established:
 
