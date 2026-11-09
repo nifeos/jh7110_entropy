@@ -109,6 +109,11 @@ Not established:
   your platform must do it, in the driver or in firmware, before the first generation.
 - The two compatible strings come from the mainline binding's example and the vendor U-Boot tree,
   not from dumps of a board's device tree. No test here walks a real tree.
+- No fuzz target. The only functions that read bytes a caller hands in are the two device-tree
+  decoders: `interrupt_line` reads at most the first four bytes of a slice, and `is_status_okay`
+  compares a slice with four fixed strings. Neither loops or holds `unsafe` code, and their unit tests
+  cover each case each one decides, so a fuzzer has nothing to find the tests miss.
+  `generation_outcome` reads only the device's own registers, and Kani exhausts it.
 
 Minimum Rust version: 1.88.
 

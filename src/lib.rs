@@ -96,8 +96,8 @@ pub mod registers {
     #[doc(alias = "ISTAT")]
     pub const INTERRUPT_STATUS_REGISTER: u64 = 0x14;
     /// Read-only fields fixed when the block was built: `MISSION_MODE_RESET_STATE`,
-    /// `RAND_SEED_AVAIL` and `MAX_RAND_LENGTH` \[trm\]. Offset named so a bench session can dump
-    /// it; nothing here reads it.
+    /// `RAND_SEED_AVAIL` and `MAX_RAND_LENGTH` \[trm\], decoded by the `super::FEATURES_*`
+    /// constants. Named so a bench session can dump and decode it; nothing here reads it.
     #[doc(alias = "FEATURES")]
     pub const FEATURES_REGISTER: u64 = 0x1C;
     /// The eight output words. Populated once `ISTAT.RAND_RDY` is set. See [`RANDOM_NUMBER_1_REGISTER`]..[`RANDOM_NUMBER_7_REGISTER`].
@@ -138,6 +138,24 @@ pub mod registers {
     /// offsets only.
     #[doc(alias = "SEED0")]
     pub const SEED_0_REGISTER: u64 = 0x40;
+    /// See [`SEED_0_REGISTER`].
+    #[doc(alias = "SEED1")]
+    pub const SEED_1_REGISTER: u64 = 0x44;
+    /// See [`SEED_0_REGISTER`].
+    #[doc(alias = "SEED2")]
+    pub const SEED_2_REGISTER: u64 = 0x48;
+    /// See [`SEED_0_REGISTER`].
+    #[doc(alias = "SEED3")]
+    pub const SEED_3_REGISTER: u64 = 0x4C;
+    /// See [`SEED_0_REGISTER`].
+    #[doc(alias = "SEED4")]
+    pub const SEED_4_REGISTER: u64 = 0x50;
+    /// See [`SEED_0_REGISTER`].
+    #[doc(alias = "SEED5")]
+    pub const SEED_5_REGISTER: u64 = 0x54;
+    /// See [`SEED_0_REGISTER`].
+    #[doc(alias = "SEED6")]
+    pub const SEED_6_REGISTER: u64 = 0x58;
     /// See [`SEED_0_REGISTER`]. The set runs `SEED0`..`SEED7` at `0x40`..`0x5C`.
     #[doc(alias = "SEED7")]
     pub const SEED_7_REGISTER: u64 = 0x5C;
@@ -153,7 +171,8 @@ pub mod registers {
     #[doc(alias = "AUTO_AGE")]
     pub const AUTOMATIC_RESEED_AGE_REGISTER: u64 = 0x64;
     /// Read-only fields describing how the block was configured when built \[trm\] (the register
-    /// \[trm\] itself calls `BUILD_CONFIG`). The highest offset the register map defines, which is
+    /// \[trm\] itself calls `BUILD_CONFIG`), decoded by the `super::BUILD_CONFIGURATION_*`
+    /// constants. The highest offset the register map defines, which is
     /// why one 4 KiB page covers this device with room to spare.
     #[doc(alias = "JH7110_TRNG_BCONF")]
     #[doc(alias = "BUILD_CONFIG")]
@@ -267,11 +286,16 @@ pub const INTERRUPT_STATUS_SEED_DONE: u32 = 1 << 1;
 /// Mainline's `jh7110-trng.c` does not define it, and a bit with no name leaves a status word
 /// undecodable. [`generation_outcome`] does not act on it, and a bring-up that writes 0 to
 /// [`registers::AUTOMATIC_RESEED_AGE_REGISTER`] never raises it.
-pub(crate) const INTERRUPT_STATUS_AGE_ALARM: u32 = 1 << 2;
+#[doc(alias = "AGE_ALARM")]
+#[doc(alias = "JH7110_TRNG_ISTATUS_AGE_ALARM")]
+pub const INTERRUPT_STATUS_AGE_ALARM: u32 = 1 << 2;
 /// `ISTAT` bit 3: the auto-reseed **request-count** alarm, the `AUTO_RQSTS` counterpart of
-/// [`INTERRUPT_STATUS_AGE_ALARM`] \[trm\], \[netbsd\]. Same status: named, not acted on, and disabled by a
-/// bring-up that writes 0 to [`registers::AUTOMATIC_RESEED_REQUESTS_REGISTER`].
-pub(crate) const INTERRUPT_STATUS_REQUEST_ALARM: u32 = 1 << 3;
+/// [`INTERRUPT_STATUS_AGE_ALARM`] \[trm\], \[netbsd\] (which calls it `RQST_LOCKUP`). Same status:
+/// named, not acted on, and disabled by a bring-up that writes 0 to
+/// [`registers::AUTOMATIC_RESEED_REQUESTS_REGISTER`].
+#[doc(alias = "RQST_ALARM")]
+#[doc(alias = "JH7110_TRNG_ISTATUS_RQST_LOCKUP")]
+pub const INTERRUPT_STATUS_REQUEST_ALARM: u32 = 1 << 3;
 /// `ISTAT` bit 4: the hardware's own fault signal, an SEU (single-event upset) in the LFSR-based
 /// post-processing stage. The Linux driver treats this as "reseed and try again", never as "trust
 /// the `RAND` registers anyway"; [`generation_outcome`] gives it priority over `RAND_RDY` in the same
@@ -293,6 +317,64 @@ pub const INTERRUPT_STATUS_DOCUMENTED_BITS_MASK: u32 = INTERRUPT_STATUS_RANDOM_N
     | INTERRUPT_STATUS_AGE_ALARM
     | INTERRUPT_STATUS_REQUEST_ALARM
     | INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP;
+
+/// `STAT` bits 16 to 18, `LAST_RESEED`: why the last reseed happened, or [`STATUS_LAST_RESEED_UNSEEDED`].
+/// Shift a masked `STAT` right by [`STATUS_LAST_RESEED_SHIFT`] to read the field's value.
+///
+/// \[driver\] places the field at bit 16; its width, three bits, is what holds the value 7 that
+/// \[trm\] gives the unseeded state. Neither cited driver reads it, so it is decoded for a bench
+/// dump and nothing here acts on it.
+#[doc(alias = "LAST_RESEED")]
+pub const STATUS_LAST_RESEED_MASK: u32 = 0b111 << STATUS_LAST_RESEED_SHIFT;
+/// Where `STAT.LAST_RESEED` starts: see [`STATUS_LAST_RESEED_MASK`].
+pub const STATUS_LAST_RESEED_SHIFT: u32 = 16;
+/// The `STAT.LAST_RESEED` value \[trm\] gives as "unseeded (zeroized state)": the field reads 7
+/// on a core that has not been seeded since it was zeroized.
+pub const STATUS_LAST_RESEED_UNSEEDED: u32 = 0b111;
+
+/// `FEATURES` bit 3, `MISSION_MODE_RESET_STATE` in \[trm\]: the block leaves reset in mission mode
+/// (1) rather than test mode (0) \[netbsd\]. See [`STATUS_MISSION_MODE`] for the mode it is in now.
+#[doc(alias = "MM_RESET_STATE")]
+#[doc(alias = "MISSION_MODE_RESET_STATE")]
+#[doc(alias = "JH7110_TRNG_FEATURES_MM_RESET_STATE")]
+pub const FEATURES_MISSION_MODE_RESET_STATE: u32 = 1 << 3;
+/// `FEATURES` bit 2: the block was built with its ring-oscillator entropy source present (1)
+/// \[netbsd\].
+#[doc(alias = "RAND_SEED_AVAIL")]
+#[doc(alias = "JH7110_TRNG_FEATURES_RAND_SEED_AVAIL")]
+pub const FEATURES_RANDOM_SEED_AVAILABLE: u32 = 1 << 2;
+/// `FEATURES` bits 0 and 1: the widest answer the block was built to give, 128 bits (0) or 256
+/// bits ([`FEATURES_WIDEST_OUTPUT_256_BIT`]) \[netbsd\]. A block built for 128 bits
+/// cannot give the 32 bytes a [`GenerationOutcome::Ready`] carries, whatever a driver writes to
+/// [`registers::MODE_REGISTER`].
+#[doc(alias = "MAX_RAND_LENGTH")]
+#[doc(alias = "JH7110_TRNG_FEATURES_MAX_RAND_LENGTH")]
+pub const FEATURES_WIDEST_OUTPUT_MASK: u32 = 0b11;
+/// The [`FEATURES_WIDEST_OUTPUT_MASK`] value for a block built to give 256 bits.
+pub const FEATURES_WIDEST_OUTPUT_256_BIT: u32 = 0b01;
+
+/// `BCONF` bit 5: the block was built with the automatic-reseed loopback present (1) \[netbsd\].
+#[doc(alias = "AUTO_RESEED_LOOPBACK")]
+#[doc(alias = "JH7110_TRNG_BCONF_AUTO_RESEED_LOOPBACK")]
+pub const BUILD_CONFIGURATION_AUTOMATIC_RESEED_LOOPBACK: u32 = 1 << 5;
+/// `BCONF` bit 4: the block leaves reset in mission mode (1) rather than test mode (0)
+/// \[netbsd\].
+#[doc(alias = "MODE_AFTER_RST")]
+#[doc(alias = "JH7110_TRNG_BCONF_MODE_AFTER_RST")]
+pub const BUILD_CONFIGURATION_MISSION_MODE_AFTER_RESET: u32 = 1 << 4;
+/// `BCONF` bit 3, `PRNG_LEN_AFTER_RST`: the output width the block leaves reset with \[trm\],
+/// which is why a bring-up writes [`MODE_256_BIT_OUTPUT`] rather than assuming it. Which value
+/// means 256 bits is not stated in any source cited here (\[netbsd\]'s description of this bit
+/// reads "not present" and "present"), so a bench dump settles it against [`STATUS_256_BIT_OUTPUT`]
+/// read before the mode write.
+#[doc(alias = "PRNG_LEN_AFTER_RST")]
+#[doc(alias = "JH7110_TRNG_BCONF_PRNG_LEN_AFTER_RST")]
+pub const BUILD_CONFIGURATION_OUTPUT_WIDTH_AFTER_RESET: u32 = 1 << 3;
+/// `BCONF` bit 2: the widest answer the block was built to give, 128 bits (0) or 256 bits (1)
+/// \[netbsd\].
+#[doc(alias = "MAX_PRNG_LEN")]
+#[doc(alias = "JH7110_TRNG_BCONF_MAX_PRNG_LEN")]
+pub const BUILD_CONFIGURATION_WIDEST_OUTPUT_256_BIT: u32 = 1 << 2;
 
 /// The device tree `compatible` string \[binding\] defines. `starfive,jh8100-trng` also lists this
 /// as a fallback compatible (the `JH8100` reuses the same TRNG intellectual property (IP) block), which is out of scope: this
@@ -814,7 +896,7 @@ mod tests {
         // own numbering, repeated from each constant's doc comment so the two cannot drift apart
         // silently. Flat rather than grouped by register, so the table reads down the page the way
         // the datasheet's own does.
-        let named: [(&str, &str, u32, u32); 20] = [
+        let named: [(&str, &str, u32, u32); 26] = [
             ("MODE", "R256", 3, MODE_256_BIT_OUTPUT),
             ("SMODE", "MISSION_MODE", 8, STATUS_MODE_MISSION_MODE),
             ("STAT", "NONCE_MODE", 2, STATUS_NONCE_MODE),
@@ -845,6 +927,42 @@ mod tests {
                 4,
                 INTERRUPT_STATUS_LINEAR_FEEDBACK_SHIFT_REGISTER_LOCKUP,
             ),
+            (
+                "FEATURES",
+                "MM_RESET_STATE",
+                3,
+                FEATURES_MISSION_MODE_RESET_STATE,
+            ),
+            (
+                "FEATURES",
+                "RAND_SEED_AVAIL",
+                2,
+                FEATURES_RANDOM_SEED_AVAILABLE,
+            ),
+            (
+                "BCONF",
+                "AUTO_RESEED_LOOPBACK",
+                5,
+                BUILD_CONFIGURATION_AUTOMATIC_RESEED_LOOPBACK,
+            ),
+            (
+                "BCONF",
+                "MODE_AFTER_RST",
+                4,
+                BUILD_CONFIGURATION_MISSION_MODE_AFTER_RESET,
+            ),
+            (
+                "BCONF",
+                "PRNG_LEN_AFTER_RST",
+                3,
+                BUILD_CONFIGURATION_OUTPUT_WIDTH_AFTER_RESET,
+            ),
+            (
+                "BCONF",
+                "MAX_PRNG_LEN",
+                2,
+                BUILD_CONFIGURATION_WIDEST_OUTPUT_256_BIT,
+            ),
         ];
         // The `CTRL_*` constants are deliberately absent: they are an enumerated command value
         // (0, 1, 2, 3) written to one field, not bits in a mask, so neither assertion below is
@@ -873,6 +991,72 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    /// **The multi-bit fields sit where their sources put them**: `STAT.LAST_RESEED` at bits 16 to
+    /// 18, clear of every single `STAT` bit this crate names, and `FEATURES.MAX_RAND_LENGTH` at
+    /// bits 0 and 1, clear of the two `FEATURES` bits.
+    #[test]
+    fn the_multi_bit_fields_are_where_their_sources_put_them() {
+        assert_eq!(STATUS_LAST_RESEED_MASK, 0x0007_0000);
+        assert_eq!(
+            STATUS_LAST_RESEED_MASK >> STATUS_LAST_RESEED_SHIFT,
+            STATUS_LAST_RESEED_UNSEEDED
+        );
+        for bit in [
+            STATUS_NONCE_MODE,
+            STATUS_256_BIT_OUTPUT,
+            STATUS_MISSION_MODE,
+            STATUS_SEEDED,
+            STATUS_SERVICE_REQUEST,
+            STATUS_GENERATING,
+            STATUS_RESEEDING,
+        ] {
+            assert_eq!(STATUS_LAST_RESEED_MASK & bit, 0, "{bit:#010x}");
+        }
+        assert_eq!(FEATURES_WIDEST_OUTPUT_MASK, 0b11);
+        assert_eq!(
+            FEATURES_WIDEST_OUTPUT_256_BIT & !FEATURES_WIDEST_OUTPUT_MASK,
+            0
+        );
+        assert_eq!(FEATURES_WIDEST_OUTPUT_256_BIT, 1);
+        for bit in [
+            FEATURES_MISSION_MODE_RESET_STATE,
+            FEATURES_RANDOM_SEED_AVAILABLE,
+        ] {
+            assert_eq!(FEATURES_WIDEST_OUTPUT_MASK & bit, 0, "{bit:#010x}");
+        }
+    }
+
+    /// **The eight seed words are four bytes apart from `SEED0` at `0x40`**, as the eight `RAND`
+    /// words are from `RAND0` at `0x20`.
+    #[test]
+    fn the_seed_and_random_number_words_are_consecutive() {
+        use registers::*;
+        let seeds = [
+            SEED_0_REGISTER,
+            SEED_1_REGISTER,
+            SEED_2_REGISTER,
+            SEED_3_REGISTER,
+            SEED_4_REGISTER,
+            SEED_5_REGISTER,
+            SEED_6_REGISTER,
+            SEED_7_REGISTER,
+        ];
+        let random_numbers = [
+            RANDOM_NUMBER_0_REGISTER,
+            RANDOM_NUMBER_1_REGISTER,
+            RANDOM_NUMBER_2_REGISTER,
+            RANDOM_NUMBER_3_REGISTER,
+            RANDOM_NUMBER_4_REGISTER,
+            RANDOM_NUMBER_5_REGISTER,
+            RANDOM_NUMBER_6_REGISTER,
+            RANDOM_NUMBER_7_REGISTER,
+        ];
+        for (i, (&seed, &random_number)) in seeds.iter().zip(&random_numbers).enumerate() {
+            assert_eq!(seed, 0x40 + 4 * i as u64);
+            assert_eq!(random_number, 0x20 + 4 * i as u64);
         }
     }
 
