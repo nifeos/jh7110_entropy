@@ -178,11 +178,35 @@ One capture showing no gross defect says nothing about unpredictability. A strea
 from one boot is also what a weak source produces. A health test and a measurement in the manner of
 National Institute of Standards and Technology Special Publication 800-90B are still absent.
 
+Second run, 2026-11-10 (UTC): the same commit and the same payload, on the same board. The person
+ran it after the board sat unpowered for about an hour, which is their statement, since nothing
+reports the plug state. The payload came over the network on the first boot this time, so the log
+holds one boot. The log's SHA-256 is `fde9661f55f814865cb6f843b76f93ff5d3717a1c6290ebbd072db48500c8a92`
+and the capture's is `208c42b41ae4118ae000ee2839cc62ecd182e3d4f760b20694395f8b2529637f`. The checker
+printed `PASS, 0 problem(s)`.
+
+- Every row that passed in the first run passed again. The first `STAT` read was again `SEEDED` = 1,
+  `LAST_RESEED` = 4 and `R256` = 1, with the same `MODE`, `FEATURES` and `BCONF` values. That
+  reading repeated across two power-ons. It is still the state the bootloader left, not shown to be
+  the silicon's reset state.
+- The answers differ from the first run in four places. The reseed median was 172 ticks (43.0
+  microseconds). With `RAND_RDY` acknowledged first, no snapshot showed `RAND_GENERATING` at all.
+  With a second `GENERATE` over a latched `RAND_RDY`, 8,777 snapshots showed it in both reads and
+  9,000 in at least one. The generation bytes and the capture are new.
+- Statistics, on a new 1,310,720-byte capture: 1 of 524 Federal Information Processing Standard
+  140-2 blocks failed. Shannon entropy was 7.999873 bits per byte, the chi-square 231.12 (upper-tail
+  p 0.8560), the mean byte 127.4203, the lag-1 serial correlation -0.001500, and no 32-byte
+  generation repeated. The `ent` program printed the same entropy, chi-square and correlation. It
+  recomputes those statistics, so it cross-checks the arithmetic and is not an independent suite.
+
+Two runs show that the reading repeats. They remain two measurements. They do not show that the
+output is unpredictable.
+
 Not established:
 
 - The quality of the randomness, as above. There is no health test, and the maintainers have not
   decided whether this crate should carry one.
-- Any other board, any other firmware, or a reset taken from anything but the one power-on above.
+- Any other board, any other firmware, or a reset taken from anything but the two power-ons above.
 - The behavior of any commit other than `ee0bde8`. A later commit that changes `src/` has not run.
 
 ## BUGS
