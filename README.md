@@ -117,6 +117,12 @@ walks a tree for you; it decodes the properties and you do the walking with your
 
 ## Hardware evidence
 
+Version 0.2.0 has run on a VisionFive 2 (JH7110): it served real TRNG output on two boots with the
+chip in 256-bit mode, the draws differing within each boot and across the boots. The clock and
+reset must be ungated and released first, as the first item under BUGS says.
+
+The record below is of a later commit, `ee0bde8`, which a register-level check ran on its own.
+
 Run on 2026-11-09 (UTC), on one VisionFive 2, against commit `ee0bde8feb9f78a67da011c928f9a2a697f3bbc1`
 of this repository. A small bare-metal RISC-V payload built on that commit's constants and its
 `generation_outcome` performed the register sequences below and printed one checksummed line per
@@ -207,7 +213,8 @@ Not established:
 - The quality of the randomness, as above. There is no health test, and the maintainers have not
   decided whether this crate should carry one.
 - Any other board, any other firmware, or a reset taken from anything but the two power-ons above.
-- The behavior of any commit other than `ee0bde8`. A later commit that changes `src/` has not run.
+- The behavior of anything but version 0.2.0 and commit `ee0bde8`. A later commit that changes `src/`
+  has not run.
 
 ## BUGS
 
