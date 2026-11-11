@@ -20,6 +20,8 @@ sentence beside it.
 - Kani proves the two new decode rules and `Pool::take`: the count it serves, the order of the
   bytes across a refill, the zeroing behind the cursor, and the short count from a generator that
   refuses. Each new harness carries a falsification patch.
+- The minimum Rust version is 1.85, the oldest toolchain the source builds and tests on, in place of
+  1.88.
 
 ## 0.2.0
 

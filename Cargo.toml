@@ -2,10 +2,9 @@
 name = "jh7110_entropy"
 version = "0.2.0"
 edition = "2024"
-# The source needs 1.85 for edition 2024, and builds and tests there. 1.88 is the oldest
-# toolchain this repository promises to keep working; lowering it later is a compatible change,
-# raising it is not.
-rust-version = "1.88"
+# The source needs 1.85 for edition 2024, builds and tests there, and the msrv job proves it on
+# every change. Raising this is a breaking change, so it stays at the oldest toolchain that works.
+rust-version = "1.85"
 description = "StarFive JH7110 true random number generator logic: registers, the success decision and both device trees' bindings, proven with Kani"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
