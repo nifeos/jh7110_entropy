@@ -10,4 +10,4 @@ src/lib.rs:293 # INTERRUPT_STATUS_RANDOM_NUMBER_READY is `1 << 0`; `1 >> 0` is a
 # Zeroing on drop: what `Drop` writes is visible only in memory that safe code cannot read once the
 # pool is gone, so no test can tell a zeroing drop from an empty one. `zero_buffer`, which it calls,
 # is tested directly (zero_buffer_clears_every_byte).
-src/lib.rs:643 # replacing `<impl Drop for Pool>::drop` with () is unobservable from safe code after the drop
+src/lib.rs:649 # replacing `<impl Drop for Pool>::drop` with () is unobservable from safe code after the drop

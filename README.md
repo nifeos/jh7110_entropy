@@ -71,7 +71,8 @@ register (`STAT`) and the interrupt status register (`ISTAT`), plus the eight ra
 - `verification::work_in_flight_is_always_not_ready`: with a generation or a reseed in flight, the
   answer is `NotReady` unless `LFSR_LOCKUP` is set.
 
-Two more cover `Pool::take`, over every pool state and every request size:
+Two more cover `Pool::take`, over every pool state and every request size, and through it
+`Pool::take_into`, which `take` calls with an eight-byte slice:
 
 - `verification::take_serves_the_bytes_in_order_and_zeroes_them`: with a generator that answers,
   `take` serves `min(byte_count, 8)` bytes, the pool's own first and the new block's after them, in
@@ -86,8 +87,9 @@ need a git checkout, and you revert each one with `git checkout -- src` before t
 
 Not proven: the quality of the randomness, which is a property of the silicon; that dropping a
 `Pool` zeroes its buffer, which safe code cannot observe; and the device-tree decoders, which have
-unit tests. `Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment carries
-a runnable example.
+unit tests; nor `take_into` with a slice longer than 8 bytes, which has unit tests that cross more
+than one refill. `Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment
+carries a runnable example.
 
 ## Build, test and prove
 

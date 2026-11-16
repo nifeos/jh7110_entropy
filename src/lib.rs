@@ -607,6 +607,12 @@ pub struct TakenBytes {
 /// let mut dry = || None;
 /// let mut pool = Pool::new();
 /// assert_eq!(pool.take(4, &mut dry), TakenBytes { byte_count: 0, word: 0 });
+///
+/// // Bytes into a slice of the caller's own: a short count leaves the rest as it was.
+/// let mut pool = Pool::new();
+/// let mut out = [0u8; 4];
+/// assert_eq!(pool.take_into(&mut out, &mut generate), 4);
+/// assert_eq!(out, [0xab; 4]);
 /// # let _ = done.send(());
 /// # });
 /// # finished
