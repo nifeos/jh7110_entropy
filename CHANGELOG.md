@@ -17,6 +17,9 @@ sentence beside it.
 - Breaking: `Pool::remaining` is `Pool::remaining_bytes`, `Pool::take`'s parameter is
   `byte_count`, and `take` answers a `TakenBytes { byte_count, word }` in place of a `(u64, u64)`
   whose order a caller had to remember.
+- `Pool::take_into` fills a caller's byte slice, across as many refills as it needs, and answers
+  how many bytes it wrote, so a caller that wants bytes is not handed a word to take apart.
+  `Pool::take` is `take_into` into eight bytes, read back as one word.
 - Kani proves the two new decode rules and `Pool::take`: the count it serves, the order of the
   bytes across a refill, the zeroing behind the cursor, and the short count from a generator that
   refuses. Each new harness carries a falsification patch.
