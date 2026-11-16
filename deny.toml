@@ -27,6 +27,16 @@ multiple-versions = "warn"
 wildcards = "deny"
 
 [sources]
+# Where code is allowed to come from. A git dependency is allowed on this project's GitHub
+# organization only, pinned by `rev` to a commit that has landed on that repository's main, with the
+# version beside it. A git dependency anywhere else stays refused, and so does any other registry.
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+# The organization name below appears once in this file; it changes when the organization does.
+# cargo-deny warns "no crate source fell under this organization" until the first git dependency
+# exists; the warning is expected and not a failure.
+[sources.allow-org]
+github = ["nifeos"]
