@@ -1,8 +1,9 @@
 Falsifies `jh7110_entropy::verification::a_refusing_generator_shortens_the_count`.
 
-The defect: `Pool::take` reports the count it was asked for when the generator stops answering,
-so the bytes it could not gather come back as zeros a caller counts as served. A client that asked
-for eight bytes of a pool holding two then treats six zeros as entropy.
+The defect: `Pool::take_into`, which `Pool::take` calls, reports the count it was asked for when
+the generator stops answering, so the bytes it could not gather come back as zeros a caller counts
+as served. A client that asked for eight bytes of a pool holding two then treats six zeros as
+entropy.
 
 Expected to fail: the harness's `assert_eq!(taken.byte_count, expected, "the count is not what the pool could serve")`,
 for any request larger than what the pool holds.
@@ -10,9 +11,9 @@ for any request larger than what the pool holds.
 diff --git a/src/lib.rs b/src/lib.rs
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -617,4 +617,5 @@ impl Pool {
-         while served < wanted {
+@@ -715,4 +715,5 @@ impl Pool {
+         while served < out.len() {
              if self.cursor == self.filled && !self.refill(generate) {
-+                served = wanted;
++                served = out.len();
                  break;
              }
