@@ -607,12 +607,6 @@ pub struct TakenBytes {
 /// let mut dry = || None;
 /// let mut pool = Pool::new();
 /// assert_eq!(pool.take(4, &mut dry), TakenBytes { byte_count: 0, word: 0 });
-///
-/// // Bytes into a slice of the caller's own: a short count leaves the rest as it was.
-/// let mut pool = Pool::new();
-/// let mut out = [0u8; 4];
-/// assert_eq!(pool.take_into(&mut out, &mut generate), 4);
-/// assert_eq!(out, [0xab; 4]);
 /// # let _ = done.send(());
 /// # });
 /// # finished
@@ -692,6 +686,26 @@ impl Pool {
     ///
     /// Each byte is zeroed in the buffer as it is copied out, as [`take`](Pool::take) does, and the
     /// copy in `out` is the caller's to clear.
+    ///
+    /// ```
+    /// # // On a worker with a deadline, as the `Pool` example is: a doctest that spins never fails.
+    /// # let (done, finished) = std::sync::mpsc::channel();
+    /// # std::thread::spawn(move || {
+    /// use jh7110_entropy::Pool;
+    ///
+    /// // Forty bytes from a device that answers 32 at a time: two generations, no seam.
+    /// let mut generate = || Some([0xab; 32]);
+    /// let mut pool = Pool::new();
+    /// let mut out = [0u8; 40];
+    /// assert_eq!(pool.take_into(&mut out, &mut generate), 40);
+    /// assert_eq!(out, [0xab; 40]);
+    /// assert_eq!(pool.remaining_bytes(), 24);
+    /// # let _ = done.send(());
+    /// # });
+    /// # finished
+    /// #     .recv_timeout(std::time::Duration::from_secs(5))
+    /// #     .expect("the example panicked (see above), or take_into never returned");
+    /// ```
     pub fn take_into(
         &mut self,
         out: &mut [u8],

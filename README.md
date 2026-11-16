@@ -87,8 +87,8 @@ need a git checkout, and you revert each one with `git checkout -- src` before t
 
 Not proven: the quality of the randomness, which is a property of the silicon; that dropping a
 `Pool` zeroes its buffer, which safe code cannot observe; and the device-tree decoders, which have
-unit tests; nor `take_into` with a slice longer than 8 bytes, which has unit tests that cross more
-than one refill. `Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment
+unit tests. `take_into` with a slice longer than 8 bytes has unit tests, not a proof, including one
+that crosses more than one refill. `Pool::take` serves at most `WORD_BYTES`, 8 bytes, per call, and its doc comment
 carries a runnable example.
 
 ## Build, test and prove

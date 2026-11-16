@@ -11,7 +11,7 @@ for any request larger than what the pool holds.
 diff --git a/src/lib.rs b/src/lib.rs
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -701,4 +701,5 @@ impl Pool {
+@@ -715,4 +715,5 @@ impl Pool {
          while served < out.len() {
              if self.cursor == self.filled && !self.refill(generate) {
 +                served = out.len();

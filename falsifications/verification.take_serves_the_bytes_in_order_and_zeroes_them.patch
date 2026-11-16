@@ -11,7 +11,7 @@ for any request of at least one byte whose served bytes were not already zero.
 diff --git a/src/lib.rs b/src/lib.rs
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -707,5 +707,4 @@ impl Pool {
+@@ -721,5 +721,4 @@ impl Pool {
                  let at = self.cursor + i;
                  out[served + i] = self.buffer[at];
 -                self.buffer[at] = 0;
