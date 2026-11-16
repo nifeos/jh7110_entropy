@@ -679,39 +679,54 @@ impl Pool {
         }
     }
 
-    /// Take `byte_count` bytes, as a [`TakenBytes`]. Gathers across a refill boundary, so a request
-    /// can straddle two generations without the client ever seeing the seam, and returns a
-    /// **short count** rather than zeros when the device stops answering mid-gather.
+    /// Fill `out` with the pool's bytes, in order, and answer how many were written. Gathers across
+    /// as many refills as `out` needs, so a request can straddle generations without the caller
+    /// ever seeing the seam, and returns a **short count** rather than zeros when the device stops
+    /// answering mid-gather: the bytes of `out` past the count are left as they were.
+    ///
+    /// Each byte is zeroed in the buffer as it is copied out, as [`take`](Pool::take) does, and the
+    /// copy in `out` is the caller's to clear.
+    pub fn take_into(
+        &mut self,
+        out: &mut [u8],
+        generate: &mut impl FnMut() -> Option<[u8; 32]>,
+    ) -> usize {
+        let mut served = 0;
+        while served < out.len() {
+            if self.cursor == self.filled && !self.refill(generate) {
+                break;
+            }
+            let run = (out.len() - served).min(self.filled - self.cursor);
+            for i in 0..run {
+                let at = self.cursor + i;
+                out[served + i] = self.buffer[at];
+                self.buffer[at] = 0;
+            }
+            self.cursor += run;
+            served += run;
+        }
+        served
+    }
+
+    /// Take `byte_count` bytes, as a [`TakenBytes`]: [`take_into`](Pool::take_into) into an
+    /// eight-byte array, read back as one little-endian word. It gathers across a refill boundary
+    /// and returns a **short count** rather than zeros when the device stops answering, as
+    /// `take_into` does.
     ///
     /// **`byte_count` is clamped to [`WORD_BYTES`]**, because the answer is one 64-bit word and
     /// there is nowhere to put a ninth byte. A caller whose protocol already clamps to 8 never
-    /// reaches this clamp; it is here because a public function that shifts by `8 * byte_count`
-    /// must not be callable into an overflow, and the first host test written against this API
-    /// found exactly that edge.
+    /// reaches this clamp.
     pub fn take(
         &mut self,
         byte_count: u64,
         generate: &mut impl FnMut() -> Option<[u8; 32]>,
     ) -> TakenBytes {
-        let wanted = byte_count.min(WORD_BYTES);
-        let mut word = 0u64;
-        let mut served = 0u64;
-        while served < wanted {
-            if self.cursor == self.filled && !self.refill(generate) {
-                break;
-            }
-            let run = (wanted - served).min((self.filled - self.cursor) as u64);
-            for i in 0..run {
-                let at = self.cursor + i as usize;
-                word |= u64::from(self.buffer[at]) << (8 * (served + i));
-                self.buffer[at] = 0;
-            }
-            self.cursor += run as usize;
-            served += run;
-        }
+        let mut bytes = [0u8; WORD_BYTES as usize];
+        let wanted = byte_count.min(WORD_BYTES) as usize;
+        let served = self.take_into(&mut bytes[..wanted], generate);
         TakenBytes {
-            byte_count: served,
-            word,
+            byte_count: served as u64,
+            word: u64::from_le_bytes(bytes),
         }
     }
 
@@ -1332,6 +1347,84 @@ mod tests {
             .byte_count,
             8
         );
+    }
+
+    /// **`take_into` writes only the slice it was given.** Three bytes asked through a slice of a
+    /// larger array come back in order, and the array's bytes outside the slice keep their marker.
+    #[test]
+    fn take_into_writes_only_its_slice() {
+        let mut counter = 0u8;
+        let (count, array) = within_a_deadline(move || {
+            let mut array = [0xee_u8; 8];
+            let mut generate = || {
+                counter += 1;
+                Some(core::array::from_fn(|i| counter.wrapping_add(i as u8)))
+            };
+            let count = Pool::new().take_into(&mut array[2..5], &mut generate);
+            (count, array)
+        });
+        assert_eq!(count, 3);
+        assert_eq!(array, [0xee, 0xee, 1, 2, 3, 0xee, 0xee, 0xee]);
+    }
+
+    /// **A dry generator gets a count of zero and an untouched slice**, never zeros counted as
+    /// served.
+    #[test]
+    fn take_into_from_a_dry_generator_writes_nothing() {
+        let (count, out) = within_a_deadline(|| {
+            let mut out = [0xee_u8; 8];
+            let count = Pool::new().take_into(&mut out, &mut || None);
+            (count, out)
+        });
+        assert_eq!(count, 0);
+        assert_eq!(out, [0xee; 8]);
+    }
+
+    /// **`take_into` gathers across more than one refill** when the slice is longer than a block:
+    /// forty bytes take two generations, served in order with no seam, and the pool keeps the
+    /// second block's last 24 bytes. A generator that stops after one block shortens the count to
+    /// 32 and leaves the rest of the slice as it was.
+    #[test]
+    fn take_into_gathers_across_refills() {
+        let (count, out, remaining_bytes) = within_a_deadline(|| {
+            let mut block = 0u8;
+            let mut generate = || {
+                block += 1;
+                Some(core::array::from_fn(|i| block * 100 + i as u8))
+            };
+            let mut pool = Pool::new();
+            let mut out = [0u8; 40];
+            let count = pool.take_into(&mut out, &mut generate);
+            (count, out, pool.remaining_bytes())
+        });
+        assert_eq!(count, 40);
+        let expected: [u8; 40] = core::array::from_fn(|i| {
+            if i < 32 {
+                100 + i as u8
+            } else {
+                200 + (i - 32) as u8
+            }
+        });
+        assert_eq!(out, expected);
+        assert_eq!(remaining_bytes, 24);
+
+        let (count, out) = within_a_deadline(|| {
+            let mut answers = 1;
+            let mut generate = || {
+                if answers > 0 {
+                    answers -= 1;
+                    Some([0x5a; 32])
+                } else {
+                    None
+                }
+            };
+            let mut out = [0xee_u8; 40];
+            let count = Pool::new().take_into(&mut out, &mut generate);
+            (count, out)
+        });
+        assert_eq!(count, 32);
+        assert_eq!(out[..32], [0x5a; 32]);
+        assert_eq!(out[32..], [0xee; 8]);
     }
 
     /// A fresh [`Pool`] per call, because the point is the call and not the history.
