@@ -3,7 +3,7 @@
 One section per release, newest first: what changed and why, so a reader of the diff has the
 sentence beside it.
 
-## Unreleased
+## 0.3.0-pre.1
 
 - Breaking: `GenerationOutcome` has a fourth refusing variant, `WrongOutputWidth`, which
   `generation_outcome` answers when `STAT.R256` (`STATUS_256_BIT_OUTPUT`) is clear. In 128-bit mode
