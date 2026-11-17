@@ -96,8 +96,8 @@ carries a runnable example.
 You need a Rust toolchain at or above the minimum version at the foot of this page (`rustup` is the
 usual way to get one) and a git checkout. From the crate root:
 
-- `cargo build` and `cargo test` run on the host and need nothing else. The tests are 23 unit tests
-  and 2 doctests.
+- `cargo build` and `cargo test` run on the host and need nothing else. `cargo test` runs the unit tests
+  and the doctests.
 - The crate also builds for bare metal. Add the three targets with `rustup target add
   riscv64imac-unknown-none-elf aarch64-unknown-none-softfloat x86_64-unknown-none`. Then run
   `cargo build --lib --target <target>` for each. CI does exactly this.
