@@ -3,7 +3,7 @@
 One section per release, newest first: what changed and why, so a reader of the diff has the
 sentence beside it.
 
-## Unreleased
+## 0.3.0-pre.1
 
 - Breaking: `GenerationOutcome` has a fourth refusing variant, `WrongOutputWidth`, which
   `generation_outcome` answers when `STAT.R256` (`STATUS_256_BIT_OUTPUT`) is clear. In 128-bit mode
@@ -17,9 +17,14 @@ sentence beside it.
 - Breaking: `Pool::remaining` is `Pool::remaining_bytes`, `Pool::take`'s parameter is
   `byte_count`, and `take` answers a `TakenBytes { byte_count, word }` in place of a `(u64, u64)`
   whose order a caller had to remember.
+- `Pool::take_into` fills a caller's byte slice, across as many refills as it needs, and answers
+  how many bytes it wrote, so a caller that wants bytes is not handed a word to take apart.
+  `Pool::take` is `take_into` into eight bytes, read back as one word.
 - Kani proves the two new decode rules and `Pool::take`: the count it serves, the order of the
   bytes across a refill, the zeroing behind the cursor, and the short count from a generator that
   refuses. Each new harness carries a falsification patch.
+- The minimum Rust version is 1.85, the oldest toolchain the source builds and tests on, in place of
+  1.88.
 
 ## 0.2.0
 
