@@ -46,9 +46,10 @@ outcome is `Ready` and the eight words are read, the driver acknowledges the req
 without that write it stays latched and the next request sees it on its first poll. On `Lockup` or
 `Unseeded` it reseeds and retries, bounded. On `NotReady`, which also covers a generation or a
 reseed still in flight, it polls again rather than issuing a command. The crate sets no bound, no poll interval and no
-timeout: you pick them, ideally from a measurement on your board. This
-README gives no timing figure. Wrap `Pool` and the register access in one lock; `Pool`
-does no locking of its own.
+timeout: you pick them, ideally from a measurement on your board. On the one board measured under
+[Hardware evidence](#hardware-evidence), a generation took at most 6.25 microseconds and a reseed
+at most 50.75 microseconds, so a bound well above those leaves margin; one board is not a
+datasheet figure. Wrap `Pool` and the register access in one lock; `Pool` does no locking of its own.
 
 ## What is proven
 
