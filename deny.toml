@@ -39,4 +39,4 @@ allow-git = []
 # cargo-deny warns "no crate source fell under this organization" until the first git dependency
 # exists; the warning is expected and not a failure.
 [sources.allow-org]
-github = ["nifeos"]
+github = ["partsfoundry"]
