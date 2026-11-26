@@ -3,6 +3,11 @@
 One section per release, newest first: what changed and why, so a reader of the diff has the
 sentence beside it.
 
+## 0.3.0-pre.2
+
+- The crate's code is unchanged. The README names version 0.3.0-pre.1 as the one that ran on a
+  VisionFive 2, gives the poll times measured there, and drops its test counts.
+
 ## 0.3.0-pre.1
 
 - Breaking: `GenerationOutcome` has a fourth refusing variant, `WrongOutputWidth`, which
